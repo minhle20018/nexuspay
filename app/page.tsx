@@ -6,15 +6,16 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Trạng thái cho màn hình đăng nhập & đăng xuất
+  // Trạng thái đăng nhập & đăng xuất
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [inputUser, setInputUser] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Trạng thái cho tính năng Trade & Swap
-  const [tradeUsd, setTradeUsd] = useState('1000');
+  // Trạng thái cho Trade & Swap (hỗ trợ cả Mua và Bán Coin)
+  const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
+  const [tradeAmount, setTradeAmount] = useState('1000');
   const [selectedCoin, setSelectedCoin] = useState('BTC');
 
   // Danh sách tài sản khớp chuẩn số liệu triệu đô ($11.9M+)
@@ -72,15 +73,32 @@ export default function Home() {
     alert("Wallet address copied to clipboard: " + text);
   };
 
-  const getEstimatedReceive = () => {
+  // Tính toán số lượng quy đổi khi Mua hoặc Bán
+  const getEstimatedOutput = () => {
     const coinObj = assets.find(a => a.symbol === selectedCoin);
     if (!coinObj || coinObj.price === 0) return '0.00';
-    const usdVal = parseFloat(tradeUsd) || 0;
-    return (usdVal / coinObj.price).toFixed(5);
+    const inputVal = parseFloat(tradeAmount) || 0;
+    
+    if (tradeMode === 'buy') {
+      // Mua: Nhập USD -> Ra số lượng Coin
+      return (inputVal / coinObj.price).toFixed(5) + ` ${selectedCoin}`;
+    } else {
+      // Bán: Nhập số lượng Coin -> Ra số USD nhận được
+      return '$' + (inputVal * coinObj.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
   };
 
   const handleConfirmTrade = () => {
-    alert(`Successfully swapped $${tradeUsd} USD for ${getEstimatedReceive()} ${selectedCoin}!`);
+    const coinObj = assets.find(a => a.symbol === selectedCoin);
+    if (tradeMode === 'buy') {
+      alert(`Successfully swapped $${tradeAmount} USD to purchase ${getEstimatedOutput()}!`);
+    } else {
+      if (coinObj && parseFloat(tradeAmount) > coinObj.amount) {
+        alert(`Insufficient ${selectedCoin} balance to sell! You have ${coinObj.amount} ${selectedCoin}.`);
+        return;
+      }
+      alert(`Successfully sold ${tradeAmount} ${selectedCoin} for ${getEstimatedOutput()}!`);
+    }
   };
 
   return (
@@ -88,7 +106,7 @@ export default function Home() {
       <div className="w-full sm:max-w-[414px] h-screen sm:h-[896px] bg-[#0c0d10] sm:rounded-[48px] sm:border-[8px] sm:border-[#1a1c23] shadow-2xl flex flex-col overflow-hidden relative">
 
         {!isLoggedIn ? (
-          /* ================= MÀN HÌNH ĐĂNG NHẬP / KHÓA VÍ ================= */
+          /* ================= MÀN HÌNH ĐĂNG NHẬP ================= */
           <div className="flex-1 flex flex-col justify-between p-6 overflow-y-auto z-20 bg-[#0c0d10]">
             <div className="pt-12">
               <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/20">
@@ -276,36 +294,58 @@ export default function Home() {
                 <div className="space-y-6 pt-2">
                   <h3 className="text-lg font-bold text-white mb-2">Trade & Swap</h3>
                   
-                  {/* Khung Trade & Swap có đầy đủ danh sách chọn coin */}
+                  {/* Khung Trade & Swap hỗ trợ cả Mua (Buy) và Bán (Sell) Coin */}
                   <div className="bg-[#161821] p-5 rounded-3xl border border-slate-800 space-y-4 relative shadow-xl">
                     
-                    {/* You Pay (USD) */}
+                    {/* Nút chọn chế độ Mua (Buy) hoặc Bán (Sell) */}
+                    <div className="flex bg-[#0c0d10] p-1 rounded-2xl border border-slate-800">
+                      <button 
+                        onClick={() => setTradeMode('buy')} 
+                        className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${tradeMode === 'buy' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400'}`}
+                      >
+                        Buy Coin
+                      </button>
+                      <button 
+                        onClick={() => setTradeMode('sell')} 
+                        className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${tradeMode === 'sell' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400'}`}
+                      >
+                        Sell Coin
+                      </button>
+                    </div>
+
+                    {/* Ô nhập số lượng */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-medium text-slate-400">You Pay (USD)</label>
+                      <label className="block text-xs font-medium text-slate-400">
+                        {tradeMode === 'buy' ? 'You Pay (USD)' : `You Sell (${selectedCoin})`}
+                      </label>
                       <div className="relative flex items-center bg-[#0c0d10] border border-slate-800 rounded-2xl px-4 py-3.5 focus-within:border-emerald-500">
                         <input 
                           type="number" 
-                          value={tradeUsd} 
-                          onChange={(e) => setTradeUsd(e.target.value)} 
+                          value={tradeAmount} 
+                          onChange={(e) => setTradeAmount(e.target.value)} 
                           className="w-full bg-transparent text-xl font-bold text-white focus:outline-none" 
                         />
-                        <span className="text-sm font-semibold text-slate-400 ml-2">USD</span>
+                        <span className="text-sm font-semibold text-slate-400 ml-2">
+                          {tradeMode === 'buy' ? 'USD' : selectedCoin}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Icon mũi tên xuống */}
+                    {/* Icon mũi tên hướng xuống */}
                     <div className="flex justify-center -my-2 relative z-10">
                       <div className="w-8 h-8 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-emerald-400 font-bold shadow-md">
                         ↓
                       </div>
                     </div>
 
-                    {/* You Receive & Coin Selector Dropdown */}
+                    {/* Ô nhận quy đổi và danh sách chọn Coin */}
                     <div className="space-y-1.5">
-                      <label className="block text-xs font-medium text-slate-400">You Receive (Estimated)</label>
+                      <label className="block text-xs font-medium text-slate-400">
+                        {tradeMode === 'buy' ? 'You Receive (Estimated)' : 'You Receive (USD Est.)'}
+                      </label>
                       <div className="flex items-center justify-between bg-[#0c0d10] border border-slate-800 rounded-2xl px-4 py-3">
                         <span className="text-xl font-bold text-emerald-400">
-                          {getEstimatedReceive()}
+                          {getEstimatedOutput()}
                         </span>
                         <select 
                           value={selectedCoin} 
@@ -319,12 +359,12 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Confirm Trade Button */}
+                    {/* Nút Xác nhận giao dịch */}
                     <button 
                       onClick={handleConfirmTrade} 
-                      className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-4 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer mt-2"
+                      className={`w-full font-bold py-4 rounded-2xl shadow-lg transition-all cursor-pointer mt-2 text-slate-950 ${tradeMode === 'buy' ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20' : 'bg-rose-500 hover:bg-rose-400 text-white shadow-rose-500/20'}`}
                     >
-                      Confirm Trade
+                      {tradeMode === 'buy' ? 'Confirm Buy' : 'Confirm Sell'}
                     </button>
 
                   </div>
