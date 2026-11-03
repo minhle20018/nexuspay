@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [inputUser, setInputUser] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -40,19 +41,21 @@ export default function Home() {
   }, []);
 
   const handleAuth = () => {
+    const usernameToUse = inputUser.trim() || "harrybui";
     if (password.length < 6) {
       setErrorMsg("Password must be at least 6 characters.");
       return;
     }
     setErrorMsg('');
-    setCurrentUser("harrybui");
-    localStorage.setItem('nexus_user', "harrybui");
+    setCurrentUser(usernameToUse);
+    localStorage.setItem('nexus_user', usernameToUse);
   };
 
   const logout = () => {
     localStorage.removeItem('nexus_user');
     setCurrentUser(null);
     setPassword('');
+    setInputUser('');
   };
 
   const calculateTotal = () => {
@@ -69,7 +72,7 @@ export default function Home() {
       <div className="w-full sm:max-w-[414px] h-screen sm:h-[896px] bg-[#0c0d10] sm:rounded-[48px] sm:border-[8px] sm:border-[#1a1c23] shadow-2xl flex flex-col overflow-hidden relative">
 
         {!currentUser ? (
-          /* ================= 1. MÀN HÌNH ĐĂNG NHẬP ================= */
+          /* ================= 1. MÀN HÌNH ĐĂNG NHẬP / TẠO TÀI KHOẢN ================= */
           <div className="flex-1 flex flex-col justify-between p-6 overflow-y-auto z-20 bg-[#0c0d10]">
             <div className="pt-12">
               <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/20">
@@ -81,20 +84,32 @@ export default function Home() {
 
             <div className="space-y-4 my-auto">
               <div className="flex bg-[#161821] p-1 rounded-2xl mb-4 border border-slate-800">
-                <button onClick={() => setIsSignUp(false)} className={`flex-1 py-2.5 text-xs font-semibold rounded-xl transition-all ${!isSignUp ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400'}`}>Sign In</button>
-                <button onClick={() => setIsSignUp(true)} className={`flex-1 py-2.5 text-xs font-semibold rounded-xl transition-all ${isSignUp ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400'}`}>Create Wallet</button>
+                <button onClick={() => setIsSignUp(false)} className={`flex-1 py-2.5 text-xs font-semibold rounded-xl transition-all cursor-pointer ${!isSignUp ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400'}`}>Sign In</button>
+                <button onClick={() => setIsSignUp(true)} className={`flex-1 py-2.5 text-xs font-semibold rounded-xl transition-all cursor-pointer ${isSignUp ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400'}`}>Create Wallet</button>
               </div>
 
               {errorMsg && <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-400 text-xs">{errorMsg}</div>}
 
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">Username / Email</label>
-                <input type="text" defaultValue="harrybui" className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                <input 
+                  type="text" 
+                  value={inputUser} 
+                  onChange={(e) => setInputUser(e.target.value)} 
+                  placeholder="Enter your username..." 
+                  className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500" 
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Password (min 6 chars)</label>
+                <input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500" 
+                />
               </div>
 
               <button onClick={handleAuth} className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold py-4 rounded-2xl transition-all shadow-lg shadow-emerald-500/20 mt-2 cursor-pointer">
@@ -113,15 +128,15 @@ export default function Home() {
             {/* Header */}
             <div className="px-6 pt-10 pb-4 flex items-center justify-between bg-[#0c0d10]">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm">
-                  HB
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm uppercase">
+                  {currentUser.substring(0, 2)}
                 </div>
                 <div>
-                  <span className="text-base font-bold text-white tracking-tight">Harry Bui</span>
+                  <span className="text-base font-bold text-white tracking-tight capitalize">{currentUser}</span>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block ml-2 animate-ping"></span>
                 </div>
               </div>
-              <button onClick={logout} className="text-xs text-rose-400 font-semibold bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20">Sign Out</button>
+              <button onClick={logout} className="text-xs text-rose-400 font-semibold bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20 cursor-pointer">Sign Out</button>
             </div>
 
             {/* Nội dung các tab */}
@@ -137,11 +152,11 @@ export default function Home() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => alert("Deposit successful!")} className="flex flex-col items-center justify-center py-4 px-5 rounded-2xl bg-[#161821] border border-slate-800 hover:bg-[#1f222e]">
+                    <button onClick={() => alert("Deposit successful!")} className="flex flex-col items-center justify-center py-4 px-5 rounded-2xl bg-[#161821] border border-slate-800 hover:bg-[#1f222e] cursor-pointer">
                       <span className="text-emerald-400 font-bold text-lg mb-1">+</span>
                       <span className="text-sm font-semibold text-white">Deposit</span>
                     </button>
-                    <button onClick={() => copyText("0x71C84922b9183Ea482b")} className="flex flex-col items-center justify-center py-4 px-5 rounded-2xl bg-[#161821] border border-slate-800 hover:bg-[#1f222e]">
+                    <button onClick={() => copyText("0x71C84922b9183Ea482b")} className="flex flex-col items-center justify-center py-4 px-5 rounded-2xl bg-[#161821] border border-slate-800 hover:bg-[#1f222e] cursor-pointer">
                       <span className="text-sky-400 font-bold text-lg mb-1">↓</span>
                       <span className="text-sm font-semibold text-white">Receive</span>
                     </button>
@@ -217,9 +232,9 @@ export default function Home() {
                     <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
                       <div>
                         <p className="text-xs font-semibold text-white">Account Owner</p>
-                        <p className="text-[11px] text-emerald-400">Harry Bui (minhle20018)</p>
+                        <p className="text-[11px] text-emerald-400 capitalize">{currentUser} (MPC Secure)</p>
                       </div>
-                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-lg border border-emerald-500/20">MPC Secure</span>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-lg border border-emerald-500/20">Active</span>
                     </div>
                   </div>
                 </div>
@@ -229,10 +244,10 @@ export default function Home() {
 
             {/* Bottom Nav */}
             <div className="absolute bottom-4 left-6 right-6 h-16 bg-[#161821]/90 backdrop-blur-xl border border-slate-800 rounded-3xl flex items-center justify-around px-4 shadow-2xl z-30">
-              <button onClick={() => setActiveTab('home')} className={`p-2 ${activeTab === 'home' ? 'text-emerald-400' : 'text-slate-400'}`}>Home</button>
-              <button onClick={() => setActiveTab('trade')} className={`p-2 ${activeTab === 'trade' ? 'text-emerald-400' : 'text-slate-400'}`}>Trade</button>
-              <button onClick={() => setActiveTab('explore')} className={`p-2 ${activeTab === 'explore' ? 'text-emerald-400' : 'text-slate-400'}`}>Explore</button>
-              <button onClick={() => setActiveTab('activity')} className={`p-2 ${activeTab === 'activity' ? 'text-emerald-400' : 'text-slate-400'}`}>Activity</button>
+              <button onClick={() => setActiveTab('home')} className={`p-2 cursor-pointer ${activeTab === 'home' ? 'text-emerald-400' : 'text-slate-400'}`}>Home</button>
+              <button onClick={() => setActiveTab('trade')} className={`p-2 cursor-pointer ${activeTab === 'trade' ? 'text-emerald-400' : 'text-slate-400'}`}>Trade</button>
+              <button onClick={() => setActiveTab('explore')} className={`p-2 cursor-pointer ${activeTab === 'explore' ? 'text-emerald-400' : 'text-slate-400'}`}>Explore</button>
+              <button onClick={() => setActiveTab('activity')} className={`p-2 cursor-pointer ${activeTab === 'activity' ? 'text-emerald-400' : 'text-slate-400'}`}>Activity</button>
             </div>
 
           </div>
