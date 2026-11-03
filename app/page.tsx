@@ -45,7 +45,7 @@ export default function Home() {
           </div>
           <button 
             onClick={handleCopy}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg transition"
+            className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg transition cursor-pointer"
           >
             {copied ? "Copied!" : "Copy"}
           </button>
@@ -64,10 +64,10 @@ export default function Home() {
 
         {/* Nút thao tác nhanh */}
         <div className="grid grid-cols-2 gap-3 mb-6">
-          <button className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-3 px-4 rounded-xl transition shadow-lg shadow-emerald-500/10 text-sm">
+          <button className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-3 px-4 rounded-xl transition shadow-lg shadow-emerald-500/10 text-sm cursor-pointer">
             Send Asset
           </button>
-          <button className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-xl transition text-sm">
+          <button className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-xl transition text-sm cursor-pointer">
             Receive
           </button>
         </div>
