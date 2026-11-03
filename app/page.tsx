@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 
 export default function Home() {
-  const [currentUser, setCurrentUser] = useState<string | null>("harrybui");
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [tradeUsd, setTradeUsd] = useState('1000');
@@ -39,6 +38,12 @@ export default function Home() {
     alert("Copied to clipboard: " + text);
   };
 
+  const logout = () => {
+    if (confirm("Are you sure you want to sign out?")) {
+      alert("Signed out successfully.");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-black text-slate-100 flex items-center justify-center p-0 sm:p-4">
       <div className="w-full sm:max-w-[414px] h-screen sm:h-[896px] bg-[#0c0d10] sm:rounded-[48px] sm:border-[8px] sm:border-[#1a1c23] shadow-2xl flex flex-col overflow-hidden relative">
@@ -46,13 +51,13 @@ export default function Home() {
         <div className="flex-1 flex flex-col overflow-hidden relative bg-[#0c0d10]">
           
           {/* Top Header */}
-          <div className="px-6 pt-10 pb-4 flex items-center justify-between bg-[#0c0d10] shrink-0">
+          <div className="px-6 pt-10 pb-4 flex items-center justify-between bg-[#0c0d10] shrink-0 z-10">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm">
                 HB
               </div>
               <div>
-                <span className="text-base font-bold text-white tracking-tight">Home</span>
+                <span className="text-base font-bold text-white tracking-tight capitalize">{activeTab}</span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block ml-2 animate-ping"></span>
               </div>
             </div>
@@ -68,7 +73,6 @@ export default function Home() {
             {activeTab === 'home' && (
               <div className="space-y-6">
                 
-                {/* Total Balance */}
                 <div className="text-center py-2">
                   <h2 className="text-4xl font-extrabold tracking-tight text-white">
                     ${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -76,7 +80,6 @@ export default function Home() {
                   <p className="text-xs text-emerald-400 font-medium mt-1">Wallet 1 (Live Feed Active)</p>
                 </div>
 
-                {/* Deposit & Receive */}
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={() => alert("Deposit clicked!")} className="flex flex-col items-center justify-center py-4 px-5 rounded-2xl bg-[#161821] border border-slate-800 hover:bg-[#1f222e] cursor-pointer">
                     <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-1 font-bold">+</div>
@@ -88,7 +91,6 @@ export default function Home() {
                   </button>
                 </div>
 
-                {/* Search */}
                 <div className="relative">
                   <input 
                     type="text" 
@@ -99,7 +101,6 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Trade Banner */}
                 <div className="bg-gradient-to-r from-[#161821] to-[#1e2330] p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
                   <div className="space-y-1 max-w-[210px]">
                     <h4 className="text-xs font-bold text-white">Trade on Your Terms</h4>
@@ -109,7 +110,6 @@ export default function Home() {
                   <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-sky-500 rounded-2xl flex items-center justify-center text-slate-950 font-bold">📈</div>
                 </div>
 
-                {/* Fund Wallet */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold text-white">Fund your wallet</h3>
                   <div className="bg-[#161821] rounded-2xl border border-slate-800 divide-y divide-slate-800/60 overflow-hidden">
@@ -136,7 +136,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Your Assets */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <h3 className="text-sm font-bold text-white">Your Assets (Harry Bui)</h3>
@@ -195,22 +194,46 @@ export default function Home() {
 
             {activeTab === 'activity' && (
               <div className="space-y-4 pt-2">
-                <h3 className="text-lg font-bold text-white">Wallet Activity</h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-bold text-white">Wallet Activity</h3>
+                  <button onClick={logout} className="text-xs text-rose-400 font-semibold bg-rose-500/10 px-3 py-1 rounded-xl border border-rose-500/20 cursor-pointer">Sign Out</button>
+                </div>
                 <div className="bg-[#161821] p-4 rounded-2xl border border-slate-800 space-y-3">
-                  <p className="text-xs text-slate-300">Account Owner: <span className="text-emerald-400 font-bold">Harry Bui</span></p>
-                  <p className="text-xs text-slate-300">Security: <span className="text-emerald-400">MPC Institutional Grade</span></p>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                    <div>
+                      <p className="text-xs font-semibold text-white">Account Owner</p>
+                      <p className="text-[11px] text-emerald-400">HARRY BUI (minhle20018)</p>
+                    </div>
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-lg border border-emerald-500/20">MPC Secure</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-xs text-slate-400">EVM Address</span>
+                    <span className="text-xs text-slate-200 font-mono">0x71C...8492</span>
+                  </div>
                 </div>
               </div>
             )}
 
           </div>
 
-          {/* Floating Bottom Nav */}
-          <div className="absolute bottom-4 left-6 right-6 h-16 bg-[#161821]/90 backdrop-blur-xl border border-slate-800 rounded-3xl flex items-center justify-around px-4 shadow-2xl z-30">
-            <button onClick={() => setActiveTab('home')} className={`p-2 cursor-pointer font-bold text-xs ${activeTab === 'home' ? 'text-emerald-400' : 'text-slate-400'}`}>🏠 Home</button>
-            <button onClick={() => setActiveTab('trade')} className={`p-2 cursor-pointer font-bold text-xs ${activeTab === 'trade' ? 'text-emerald-400' : 'text-slate-400'}`}>📈 Trade</button>
-            <button onClick={() => setActiveTab('explore')} className={`p-2 cursor-pointer font-bold text-xs ${activeTab === 'explore' ? 'text-emerald-400' : 'text-slate-400'}`}>🔍 Explore</button>
-            <button onClick={() => setActiveTab('activity')} className={`p-2 cursor-pointer font-bold text-xs ${activeTab === 'activity' ? 'text-emerald-400' : 'text-slate-400'}`}>⏰ Activity</button>
+          {/* Bottom Navigation Bar */}
+          <div className="absolute bottom-4 left-6 right-6 h-16 bg-[#161821]/95 backdrop-blur-xl border border-slate-800 rounded-3xl flex items-center justify-around px-4 shadow-2xl z-30">
+            <button onClick={() => setActiveTab('home')} className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${activeTab === 'home' ? 'text-emerald-400' : 'text-slate-400'}`}>
+              <span>🏠</span>
+              <span className="text-[10px] mt-0.5">Home</span>
+            </button>
+            <button onClick={() => setActiveTab('trade')} className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${activeTab === 'trade' ? 'text-emerald-400' : 'text-slate-400'}`}>
+              <span>📈</span>
+              <span className="text-[10px] mt-0.5">Trade</span>
+            </button>
+            <button onClick={() => setActiveTab('explore')} className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${activeTab === 'explore' ? 'text-emerald-400' : 'text-slate-400'}`}>
+              <span>🔍</span>
+              <span className="text-[10px] mt-0.5">Explore</span>
+            </button>
+            <button onClick={() => setActiveTab('activity')} className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${activeTab === 'activity' ? 'text-emerald-400' : 'text-slate-400'}`}>
+              <span>⏰</span>
+              <span className="text-[10px] mt-0.5">Activity</span>
+            </button>
           </div>
 
         </div>
