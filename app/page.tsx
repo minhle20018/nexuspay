@@ -13,7 +13,6 @@ export default function Home() {
   const [tradeUsd, setTradeUsd] = useState('1000');
   const [tradeCoin, setTradeCoin] = useState('BTC');
 
-  // Danh sách tài sản
   const [assets, setAssets] = useState([
     { symbol: 'BTC', name: 'Bitcoin', price: 77920.00, change: '+2.4%', amount: 10.0, icon: '₿' },
     { symbol: 'ETH', name: 'Ethereum', price: 2290.00, change: '+1.8%', amount: 1748.17, icon: 'Ξ' },
@@ -22,12 +21,10 @@ export default function Home() {
     { symbol: 'USDC', name: 'USD Coin', price: 1.00, change: '0.0%', amount: 448.60, icon: '$' }
   ]);
 
-  // Kiểm tra đăng nhập lưu sẵn
   useEffect(() => {
     const savedUser = localStorage.getItem('nexus_user');
     if (savedUser) setCurrentUser(savedUser);
 
-    // Mô phỏng giá thị trường nhảy real-time
     const interval = setInterval(() => {
       setAssets(prev => prev.map(asset => {
         if (asset.symbol !== 'USDC') {
@@ -72,7 +69,6 @@ export default function Home() {
       <div className="w-full sm:max-w-[414px] h-screen sm:h-[896px] bg-[#0c0d10] sm:rounded-[48px] sm:border-[8px] sm:border-[#1a1c23] shadow-2xl flex flex-col overflow-hidden relative">
 
         {!currentUser ? (
-          /* ================= 1. MÀN HÌNH ĐĂNG NHẬP / TẠO TÀI KHOẢN ================= */
           <div className="flex-1 flex flex-col justify-between p-6 overflow-y-auto z-20 bg-[#0c0d10]">
             <div className="pt-12">
               <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/20">
@@ -122,10 +118,8 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          /* ================= 2. GIAO DIỆN CHÍNH (DASHBOARD) ================= */
           <div className="flex-1 flex flex-col overflow-hidden relative bg-[#0c0d10]">
             
-            {/* Header */}
             <div className="px-6 pt-10 pb-4 flex items-center justify-between bg-[#0c0d10]">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm uppercase">
@@ -139,7 +133,6 @@ export default function Home() {
               <button onClick={logout} className="text-xs text-rose-400 font-semibold bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20 cursor-pointer">Sign Out</button>
             </div>
 
-            {/* Nội dung các tab */}
             <div className="flex-1 overflow-y-auto pb-32 px-6 space-y-6">
               
               {activeTab === 'home' && (
@@ -242,7 +235,6 @@ export default function Home() {
 
             </div>
 
-            {/* Bottom Nav */}
             <div className="absolute bottom-4 left-6 right-6 h-16 bg-[#161821]/90 backdrop-blur-xl border border-slate-800 rounded-3xl flex items-center justify-around px-4 shadow-2xl z-30">
               <button onClick={() => setActiveTab('home')} className={`p-2 cursor-pointer ${activeTab === 'home' ? 'text-emerald-400' : 'text-slate-400'}`}>Home</button>
               <button onClick={() => setActiveTab('trade')} className={`p-2 cursor-pointer ${activeTab === 'trade' ? 'text-emerald-400' : 'text-slate-400'}`}>Trade</button>
