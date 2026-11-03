@@ -5,9 +5,12 @@ import React, { useState, useEffect } from 'react';
 export default function Home() {
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Trạng thái cho tính năng Trade & Swap chuẩn mẫu
   const [tradeUsd, setTradeUsd] = useState('1000');
+  const [selectedCoin, setSelectedCoin] = useState('BTC');
 
-  // Khớp chính xác 100% số lượng tài sản để tổng portfolio đạt đúng mức ~$11.9 triệu USD như bản Go Live
+  // Danh sách tài sản khớp chuẩn số liệu triệu đô ($11.9M+)
   const [assets, setAssets] = useState([
     { symbol: 'BTC', name: 'Bitcoin', price: 77920.00, change: '+2.4%', amount: 87.00205338809035, icon: '₿' },
     { symbol: 'ETH', name: 'Ethereum', price: 2272.91, change: '+1.8%', amount: 1748.1748908296943, icon: 'Ξ' },
@@ -44,6 +47,18 @@ export default function Home() {
     }
   };
 
+  // Tính số lượng coin nhận được khi Swap
+  const getEstimatedReceive = () => {
+    const coinObj = assets.find(a => a.symbol === selectedCoin);
+    if (!coinObj || coinObj.price === 0) return '0.00';
+    const usdVal = parseFloat(tradeUsd) || 0;
+    return (usdVal / coinObj.price).toFixed(5);
+  };
+
+  const handleConfirmTrade = () => {
+    alert(`Successfully swapped $${tradeUsd} USD for ${getEstimatedReceive()} ${selectedCoin}!`);
+  };
+
   return (
     <main className="min-h-screen bg-black text-slate-100 flex items-center justify-center p-0 sm:p-4">
       <div className="w-full sm:max-w-[414px] h-screen sm:h-[896px] bg-[#0c0d10] sm:rounded-[48px] sm:border-[8px] sm:border-[#1a1c23] shadow-2xl flex flex-col overflow-hidden relative">
@@ -57,13 +72,15 @@ export default function Home() {
                 HB
               </div>
               <div>
-                <span className="text-base font-bold text-white tracking-tight capitalize">{activeTab}</span>
+                <span className="text-base font-bold text-white tracking-tight capitalize">
+                  {activeTab === 'trade' ? 'Trade & Swap' : activeTab}
+                </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block ml-2 animate-ping"></span>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button onClick={() => alert('No new rewards available.')} className="w-10 h-10 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-emerald-400 cursor-pointer">🎁</button>
-              <button onClick={() => alert('Opening QR scanner...')} className="w-10 h-10 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-slate-300 cursor-pointer">📷</button>
+              <button onClick={() => alert('No new rewards.')} className="w-10 h-10 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-emerald-400 cursor-pointer">🎁</button>
+              <button onClick={() => alert('Scanning QR...')} className="w-10 h-10 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-slate-300 cursor-pointer">📷</button>
             </div>
           </div>
 
@@ -138,16 +155,6 @@ export default function Home() {
                       </div>
                       <button onClick={() => copyText('8SExE819vJxK994nx')} className="text-slate-400 hover:text-white cursor-pointer text-xs">📋</button>
                     </div>
-                    <div className="flex items-center justify-between p-3.5">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-amber-400 font-bold">₿</div>
-                        <div>
-                          <p className="text-xs font-semibold text-white">Bitcoin</p>
-                          <p className="text-[10px] text-slate-400 font-mono">bc1q098234hjt994k</p>
-                        </div>
-                      </div>
-                      <button onClick={() => copyText('bc1q098234hjt994k')} className="text-slate-400 hover:text-white cursor-pointer text-xs">📋</button>
-                    </div>
                   </div>
                 </div>
 
@@ -181,15 +188,59 @@ export default function Home() {
 
             {activeTab === 'trade' && (
               <div className="space-y-6 pt-2">
-                <h3 className="text-lg font-bold text-white">Trade & Swap</h3>
-                <div className="bg-[#161821] p-5 rounded-3xl border border-slate-800 space-y-4">
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">You Pay (USD)</label>
-                    <input type="number" value={tradeUsd} onChange={(e) => setTradeUsd(e.target.value)} className="w-full bg-[#0c0d10] border border-slate-800 rounded-2xl px-4 py-3.5 text-lg font-bold text-white focus:outline-none" />
+                <h3 className="text-lg font-bold text-white mb-2">Trade & Swap</h3>
+                
+                {/* Khung Trade & Swap chuẩn y hệt hình ảnh mẫu */}
+                <div className="bg-[#161821] p-5 rounded-3xl border border-slate-800 space-y-4 relative shadow-xl">
+                  
+                  {/* You Pay (USD) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-slate-400">You Pay (USD)</label>
+                    <div className="relative flex items-center bg-[#0c0d10] border border-slate-800 rounded-2xl px-4 py-3.5 focus-within:border-emerald-500">
+                      <input 
+                        type="number" 
+                        value={tradeUsd} 
+                        onChange={(e) => setTradeUsd(e.target.value)} 
+                        className="w-full bg-transparent text-xl font-bold text-white focus:outline-none" 
+                      />
+                      <span className="text-sm font-semibold text-slate-400 ml-2">USD</span>
+                    </div>
                   </div>
-                  <button onClick={() => alert("Trade executed successfully!")} className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold py-4 rounded-2xl cursor-pointer">
+
+                  {/* Icon mũi tên xuống ở giữa */}
+                  <div className="flex justify-center -my-2 relative z-10">
+                    <div className="w-8 h-8 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-emerald-400 font-bold shadow-md">
+                      ↓
+                    </div>
+                  </div>
+
+                  {/* You Receive (Estimated) */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-slate-400">You Receive (Estimated)</label>
+                    <div className="flex items-center justify-between bg-[#0c0d10] border border-slate-800 rounded-2xl px-4 py-3">
+                      <span className="text-xl font-bold text-emerald-400">
+                        {getEstimatedReceive()}
+                      </span>
+                      <select 
+                        value={selectedCoin} 
+                        onChange={(e) => setSelectedCoin(e.target.value)} 
+                        className="bg-[#161821] text-xs font-semibold px-3 py-2 rounded-xl border border-slate-800 text-white focus:outline-none cursor-pointer"
+                      >
+                        {assets.map(a => (
+                          <option key={a.symbol} value={a.symbol}>{a.symbol}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Confirm Trade Button */}
+                  <button 
+                    onClick={handleConfirmTrade} 
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-4 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer mt-2"
+                  >
                     Confirm Trade
                   </button>
+
                 </div>
               </div>
             )}
