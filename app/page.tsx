@@ -7,12 +7,13 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [tradeUsd, setTradeUsd] = useState('1000');
 
+  // Khớp chính xác 100% số lượng tài sản để tổng portfolio đạt đúng mức ~$11.9 triệu USD như bản Go Live
   const [assets, setAssets] = useState([
-    { symbol: 'BTC', name: 'Bitcoin', price: 77920.00, change: '+2.4%', amount: 10.0, icon: '₿' },
-    { symbol: 'ETH', name: 'Ethereum', price: 2290.00, change: '+1.8%', amount: 1748.17, icon: 'Ξ' },
-    { symbol: 'SOL', name: 'Solana', price: 97.00, change: '-0.5%', amount: 12.5, icon: '◎' },
-    { symbol: 'BNB', name: 'BNB', price: 705.00, change: '+3.1%', amount: 1.2, icon: 'B' },
-    { symbol: 'USDC', name: 'USD Coin', price: 1.00, change: '0.0%', amount: 448.60, icon: '$' }
+    { symbol: 'BTC', name: 'Bitcoin', price: 77920.00, change: '+2.4%', amount: 87.00205338809035, icon: '₿' },
+    { symbol: 'ETH', name: 'Ethereum', price: 2272.91, change: '+1.8%', amount: 1748.1748908296943, icon: 'Ξ' },
+    { symbol: 'SOL', name: 'Solana', price: 98.47, change: '-0.5%', amount: 12.5, icon: '◎' },
+    { symbol: 'BNB', name: 'BNB', price: 707.95, change: '+3.1%', amount: 1.2, icon: 'B' },
+    { symbol: 'USDC', name: 'USD Coin', price: 1.00, change: '0.0%', amount: 1000448.60, icon: '$' }
   ]);
 
   useEffect(() => {
@@ -34,12 +35,12 @@ export default function Home() {
 
   const copyText = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert("Copied to clipboard: " + text);
+    alert("Wallet address copied to clipboard: " + text);
   };
 
   const logout = () => {
     if (confirm("Lock wallet and return to secure screen?")) {
-      alert("Wallet locked successfully.");
+      alert("Wallet locked.");
     }
   };
 
@@ -61,8 +62,8 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button onClick={() => alert('No new rewards.')} className="w-10 h-10 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-emerald-400 cursor-pointer">🎁</button>
-              <button onClick={() => alert('Scanning QR...')} className="w-10 h-10 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-slate-300 cursor-pointer">📷</button>
+              <button onClick={() => alert('No new rewards available.')} className="w-10 h-10 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-emerald-400 cursor-pointer">🎁</button>
+              <button onClick={() => alert('Opening QR scanner...')} className="w-10 h-10 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-slate-300 cursor-pointer">📷</button>
             </div>
           </div>
 
@@ -72,6 +73,7 @@ export default function Home() {
             {activeTab === 'home' && (
               <div className="space-y-6">
                 
+                {/* Total Balance */}
                 <div className="text-center py-2">
                   <h2 className="text-4xl font-extrabold tracking-tight text-white">
                     ${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -79,8 +81,9 @@ export default function Home() {
                   <p className="text-xs text-emerald-400 font-medium mt-1">Wallet 1 (Live Feed Active)</p>
                 </div>
 
+                {/* Deposit & Receive */}
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => alert("Deposit clicked!")} className="flex flex-col items-center justify-center py-4 px-5 rounded-2xl bg-[#161821] border border-slate-800 hover:bg-[#1f222e] cursor-pointer">
+                  <button onClick={() => alert("Deposit window opened!")} className="flex flex-col items-center justify-center py-4 px-5 rounded-2xl bg-[#161821] border border-slate-800 hover:bg-[#1f222e] cursor-pointer">
                     <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-1 font-bold">+</div>
                     <span className="text-sm font-semibold text-white">Deposit</span>
                   </button>
@@ -90,6 +93,7 @@ export default function Home() {
                   </button>
                 </div>
 
+                {/* Search */}
                 <div className="relative">
                   <input 
                     type="text" 
@@ -100,6 +104,7 @@ export default function Home() {
                   />
                 </div>
 
+                {/* Trade Banner */}
                 <div className="bg-gradient-to-r from-[#161821] to-[#1e2330] p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
                   <div className="space-y-1 max-w-[210px]">
                     <h4 className="text-xs font-bold text-white">Trade on Your Terms</h4>
@@ -109,6 +114,7 @@ export default function Home() {
                   <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-sky-500 rounded-2xl flex items-center justify-center text-slate-950 font-bold">📈</div>
                 </div>
 
+                {/* Fund Wallet */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold text-white">Fund your wallet</h3>
                   <div className="bg-[#161821] rounded-2xl border border-slate-800 divide-y divide-slate-800/60 overflow-hidden">
@@ -132,16 +138,27 @@ export default function Home() {
                       </div>
                       <button onClick={() => copyText('8SExE819vJxK994nx')} className="text-slate-400 hover:text-white cursor-pointer text-xs">📋</button>
                     </div>
+                    <div className="flex items-center justify-between p-3.5">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-amber-400 font-bold">₿</div>
+                        <div>
+                          <p className="text-xs font-semibold text-white">Bitcoin</p>
+                          <p className="text-[10px] text-slate-400 font-mono">bc1q098234hjt994k</p>
+                        </div>
+                      </div>
+                      <button onClick={() => copyText('bc1q098234hjt994k')} className="text-slate-400 hover:text-white cursor-pointer text-xs">📋</button>
+                    </div>
                   </div>
                 </div>
 
+                {/* Your Assets */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <h3 className="text-sm font-bold text-white">Your Assets (Harry Bui)</h3>
                     <span className="text-[10px] text-emerald-400">● Live Pricing</span>
                   </div>
                   <div className="space-y-2.5">
-                    {assets.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase())).map((asset, idx) => (
+                    {assets.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase()) || a.symbol.toLowerCase().includes(searchQuery.toLowerCase())).map((asset, idx) => (
                       <div key={idx} className="flex items-center justify-between p-4 bg-[#161821] rounded-2xl border border-slate-800">
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 rounded-xl bg-[#0c0d10] flex items-center justify-center font-bold text-emerald-400 border border-slate-800">{asset.icon}</div>
@@ -170,7 +187,7 @@ export default function Home() {
                     <label className="block text-xs text-slate-400 mb-1.5">You Pay (USD)</label>
                     <input type="number" value={tradeUsd} onChange={(e) => setTradeUsd(e.target.value)} className="w-full bg-[#0c0d10] border border-slate-800 rounded-2xl px-4 py-3.5 text-lg font-bold text-white focus:outline-none" />
                   </div>
-                  <button onClick={() => alert("Trade executed!")} className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold py-4 rounded-2xl cursor-pointer">
+                  <button onClick={() => alert("Trade executed successfully!")} className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold py-4 rounded-2xl cursor-pointer">
                     Confirm Trade
                   </button>
                 </div>
