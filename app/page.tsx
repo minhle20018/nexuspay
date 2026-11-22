@@ -127,11 +127,42 @@ const INITIAL_ASSETS: Asset[] = [
   },
 ];
 
+const INITIAL_ACTIVITIES: ActivityItem[] = [
+  {
+    id: 'act-1',
+    type: 'Receive',
+    symbol: 'BTC',
+    amount: 87.00205339,
+    usdValue: 87.00205338809035 * 60865.64,
+    timestamp: 'Today, 08:15 AM',
+  },
+  {
+    id: 'act-2',
+    type: 'Receive',
+    symbol: 'ETH',
+    amount: 1748.17489083,
+    usdValue: 1748.1748908296943 * 1713.88,
+    timestamp: 'Yesterday, 04:40 PM',
+  },
+  {
+    id: 'act-3',
+    type: 'Receive',
+    symbol: 'USDC',
+    amount: 1000448.6,
+    usdValue: 1000448.6,
+    timestamp: '2 days ago',
+  },
+];
+
+const STORAGE_ASSETS_KEY = 'nexus_wallet_assets_v1';
+const STORAGE_ACTIVITIES_KEY = 'nexus_wallet_activities_v1';
+
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'home' | 'trade' | 'explore' | 'activity'>('home');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
+  const [hasHydratedStorage, setHasHydratedStorage] = useState<boolean>(false);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
   // Trade state
@@ -143,37 +174,34 @@ export default function Home() {
   const [tradeMessage, setTradeMessage] = useState<string | null>(null);
 
   // Activity log
-  const [activities, setActivities] = useState<ActivityItem[]>([
-    {
-      id: 'act-1',
-      type: 'Receive',
-      symbol: 'BTC',
-      amount: 87.00205339,
-      usdValue: 87.00205338809035 * 60865.64,
-      timestamp: 'Today, 08:15 AM',
-    },
-    {
-      id: 'act-2',
-      type: 'Receive',
-      symbol: 'ETH',
-      amount: 1748.17489083,
-      usdValue: 1748.1748908296943 * 1713.88,
-      timestamp: 'Yesterday, 04:40 PM',
-    },
-    {
-      id: 'act-3',
-      type: 'Receive',
-      symbol: 'USDC',
-      amount: 1000448.6,
-      usdValue: 1000448.6,
-      timestamp: '2 days ago',
-    },
-  ]);
+  const [activities, setActivities] = useState<ActivityItem[]>(INITIAL_ACTIVITIES);
 
   useEffect(() => {
     const savedStatus = localStorage.getItem('nexus_logged_in');
     if (savedStatus === 'false') {
       setIsLoggedIn(false);
+    }
+
+    try {
+      const savedAssets = localStorage.getItem(STORAGE_ASSETS_KEY);
+      if (savedAssets) {
+        const parsedAssets = JSON.parse(savedAssets);
+        if (Array.isArray(parsedAssets) && parsedAssets.length > 0) {
+          setAssets(parsedAssets);
+        }
+      }
+
+      const savedActivities = localStorage.getItem(STORAGE_ACTIVITIES_KEY);
+      if (savedActivities) {
+        const parsedActivities = JSON.parse(savedActivities);
+        if (Array.isArray(parsedActivities)) {
+          setActivities(parsedActivities);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to restore wallet state from localStorage:', err);
+    } finally {
+      setHasHydratedStorage(true);
     }
 
     const interval = setInterval(() => {
@@ -195,6 +223,24 @@ export default function Home() {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!hasHydratedStorage) return;
+    try {
+      localStorage.setItem(STORAGE_ASSETS_KEY, JSON.stringify(assets));
+    } catch (err) {
+      console.error('Failed to save wallet assets to localStorage:', err);
+    }
+  }, [assets, hasHydratedStorage]);
+
+  useEffect(() => {
+    if (!hasHydratedStorage) return;
+    try {
+      localStorage.setItem(STORAGE_ACTIVITIES_KEY, JSON.stringify(activities));
+    } catch (err) {
+      console.error('Failed to save wallet activities to localStorage:', err);
+    }
+  }, [activities, hasHydratedStorage]);
 
   const selectedAsset = useMemo(
     () => assets.find((a) => a.symbol === selectedSymbol) || assets[0],
