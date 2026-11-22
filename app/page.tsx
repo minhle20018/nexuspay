@@ -1,4 +1,5 @@
-﻿'use client';
+﻿$pageCode = @'
+'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
@@ -98,7 +99,7 @@ export default function Home() {
         }
       }
     } catch {
-      // Dự phòng Coinbase trực tiếp
+      // Fallback to direct Coinbase spot endpoint
     }
 
     const missing = LIVE_SYMBOLS.filter((sym) => !(collected[sym] > 0));
@@ -115,7 +116,7 @@ export default function Home() {
               gotAnyPrice = true;
             }
           } catch {
-            // Bỏ qua symbol lỗi
+            // Ignore failed symbol
           }
         })
       );
@@ -264,15 +265,15 @@ export default function Home() {
     const usdAmount = parseFloat(usdInput);
     const coinAmount = parseFloat(coinInput);
     if (isNaN(usdAmount) || isNaN(coinAmount) || usdAmount <= 0 || coinAmount <= 0) {
-      setTradeMessage('Vui lòng nhập số tiền hợp lệ lớn hơn 0.');
+      setTradeMessage('Please enter a valid amount greater than 0.');
       return;
     }
     if (!selectedAsset || selectedAsset.price <= 0) {
-      setTradeMessage('Đang chờ giá thị trường thực tế, vui lòng thử lại sau vài giây.');
+      setTradeMessage('Waiting for live market price, please try again.');
       return;
     }
     if (tradeMode === 'sell' && coinAmount > selectedAsset.amount) {
-      setTradeMessage(`Không đủ số dư ${selectedAsset.symbol} để bán.`);
+      setTradeMessage(`Insufficient ${selectedAsset.symbol} balance to sell.`);
       return;
     }
 
@@ -310,8 +311,8 @@ export default function Home() {
 
     setTradeMessage(
       soldCompletely
-        ? `Đã bán hết ${selectedAsset.symbol} và đồng bộ ví ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
-        : `${tradeMode === 'buy' ? 'Đã mua thêm' : 'Đã bán'} ${coinAmount.toFixed(6)} ${selectedAsset.symbol} ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) — đã đồng bộ.`
+        ? `Sold all ${selectedAsset.symbol} and synced wallet ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
+        : `${tradeMode === 'buy' ? 'Bought' : 'Sold'} ${coinAmount.toFixed(6)} ${selectedAsset.symbol} ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) — synced.`
     );
   };
 
@@ -754,4 +755,11 @@ export default function Home() {
       </div>
     </div>
   );
+}
+'@
+
+if (Test-Path ".\app\page.tsx") {
+  Set-Content -Path ".\app\page.tsx" -Value $pageCode -Encoding utf8
+} elseif (Test-Path ".\page.tsx") {
+  Set-Content -Path ".\page.tsx" -Value $pageCode -Encoding utf8
 }

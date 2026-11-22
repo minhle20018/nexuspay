@@ -1,3 +1,4 @@
+﻿$routeCode = @'
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -56,4 +57,14 @@ export async function GET(req: NextRequest) {
     },
     { status: 200 }
   );
+}
+'@
+
+if (Test-Path ".\app\api\prices") {
+  Set-Content -Path ".\app\api\prices\route.ts" -Value $routeCode -Encoding utf8
+} elseif (Test-Path ".\api\prices") {
+  Set-Content -Path ".\api\prices\route.ts" -Value $routeCode -Encoding utf8
+} else {
+  New-Item -ItemType Directory -Force -Path ".\app\api\prices" | Out-Null
+  Set-Content -Path ".\app\api\prices\route.ts" -Value $routeCode -Encoding utf8
 }
