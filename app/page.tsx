@@ -71,6 +71,52 @@ const INITIAL_ASSETS: Asset[] = [
     amount: 1000448.6,
     icon: '$',
   },
+  // Các đồng tiền khác — có thể Buy & Sell đầy đủ
+  {
+    symbol: 'XRP',
+    name: 'Ripple',
+    basePrice: 1.45,
+    price: 1.45,
+    change: '+4.2%',
+    amount: 0,
+    icon: '✕',
+  },
+  {
+    symbol: 'DOGE',
+    name: 'Dogecoin',
+    basePrice: 0.24,
+    price: 0.24,
+    change: '+6.1%',
+    amount: 0,
+    icon: 'Ð',
+  },
+  {
+    symbol: 'ADA',
+    name: 'Cardano',
+    basePrice: 0.78,
+    price: 0.78,
+    change: '-1.2%',
+    amount: 0,
+    icon: '₳',
+  },
+  {
+    symbol: 'AVAX',
+    name: 'Avalanche',
+    basePrice: 38.5,
+    price: 38.5,
+    change: '+2.9%',
+    amount: 0,
+    icon: 'A',
+  },
+  {
+    symbol: 'LINK',
+    name: 'Chainlink',
+    basePrice: 18.2,
+    price: 18.2,
+    change: '+1.5%',
+    amount: 0,
+    icon: '⬡',
+  },
 ];
 
 export default function Home() {
@@ -128,7 +174,8 @@ export default function Home() {
             return { ...asset, price: 1.0 };
           }
           const swingPercent = (Math.random() * 0.4 - 0.2) / 100; // ±0.20% quanh basePrice
-          const nextPrice = Number((asset.basePrice * (1 + swingPercent)).toFixed(2));
+          const decimals = asset.basePrice < 2 ? 4 : 2;
+          const nextPrice = Number((asset.basePrice * (1 + swingPercent)).toFixed(decimals));
           return {
             ...asset,
             price: nextPrice > 0 ? nextPrice : asset.basePrice,
@@ -208,19 +255,28 @@ export default function Home() {
       return;
     }
 
+    const usdcAsset = assets.find((a) => a.symbol === 'USDC');
+    if (
+      tradeMode === 'buy' &&
+      selectedAsset.symbol !== 'USDC' &&
+      usdcAsset &&
+      usdAmount > usdcAsset.amount
+    ) {
+      setTradeMessage('Không đủ số dư USDC để mua.');
+      return;
+    }
+
     setAssets((prev) =>
       prev.map((item) => {
         if (item.symbol === selectedAsset.symbol) {
           const updatedAmount =
             tradeMode === 'buy' ? item.amount + coinAmount : item.amount - coinAmount;
-          return { ...item, amount: Number(updatedAmount.toFixed(8)) };
+          return { ...item, amount: Number(Math.max(0, updatedAmount).toFixed(8)) };
         }
         if (item.symbol === 'USDC' && selectedAsset.symbol !== 'USDC') {
           const updatedUsdc =
-            tradeMode === 'buy'
-              ? Math.max(0, item.amount - usdAmount)
-              : item.amount + usdAmount;
-          return { ...item, amount: Number(updatedUsdc.toFixed(2)) };
+            tradeMode === 'buy' ? item.amount - usdAmount : item.amount + usdAmount;
+          return { ...item, amount: Number(Math.max(0, updatedUsdc).toFixed(2)) };
         }
         return item;
       })
@@ -243,6 +299,11 @@ export default function Home() {
 
   const formatUsd = (val: number) =>
     val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const formatCoinPrice = (val: number) =>
+    val < 2
+      ? val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+      : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (!isLoggedIn) {
     return (
@@ -361,7 +422,7 @@ export default function Home() {
               >
                 <div className="space-y-1">
                   <div className="text-sm font-bold">Trade on Your Terms</div>
-                  <div className="text-xs text-zinc-400">Limit orders are now live. Try it out today.</div>
+                  <div className="text-xs text-zinc-400">Buy & Sell all supported assets anytime.</div>
                   <div className="text-xs font-semibold text-emerald-400 pt-0.5">Start Trading →</div>
                 </div>
                 <div className="w-11 h-11 rounded-2xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 font-bold text-lg">
@@ -413,6 +474,7 @@ export default function Home() {
                         key={asset.symbol}
                         onClick={() => {
                           setSelectedSymbol(asset.symbol);
+                          setTradeMessage(null);
                           setActiveTab('trade');
                         }}
                         className="bg-[#14161c] hover:bg-[#191c24] border border-white/5 rounded-2xl p-4 flex items-center justify-between transition cursor-pointer"
@@ -424,7 +486,7 @@ export default function Home() {
                           <div className="truncate">
                             <div className="text-sm font-bold truncate">{asset.name}</div>
                             <div className="text-xs text-zinc-400 truncate">
-                              {asset.amount} {asset.symbol} • ${formatUsd(asset.price)}
+                              {asset.amount} {asset.symbol} • ${formatCoinPrice(asset.price)}
                             </div>
                           </div>
                         </div>
@@ -456,7 +518,7 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <h1 className="text-xl font-bold">Trade & Swap</h1>
                 <span className="text-xs text-emerald-400">
-                  1 {selectedAsset.symbol} = ${formatUsd(selectedAsset.price)}
+                  1 {selectedAsset.symbol} = ${formatCoinPrice(selectedAsset.price)}
                 </span>
               </div>
 
@@ -464,7 +526,10 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-2 bg-[#14161c] p-1.5 rounded-2xl border border-white/10">
                 <button
                   type="button"
-                  onClick={() => setTradeMode('buy')}
+                  onClick={() => {
+                    setTradeMode('buy');
+                    setTradeMessage(null);
+                  }}
                   className={`py-2 rounded-xl text-sm font-bold transition cursor-pointer ${
                     tradeMode === 'buy'
                       ? 'bg-emerald-500 text-black'
@@ -475,7 +540,10 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTradeMode('sell')}
+                  onClick={() => {
+                    setTradeMode('sell');
+                    setTradeMessage(null);
+                  }}
                   className={`py-2 rounded-xl text-sm font-bold transition cursor-pointer ${
                     tradeMode === 'sell'
                       ? 'bg-rose-500 text-white'
@@ -491,10 +559,13 @@ export default function Home() {
                 className="bg-[#14161c] border border-white/10 rounded-2xl p-4 space-y-4"
               >
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">Select Asset</label>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Select Asset (All Coins)</label>
                   <select
                     value={selectedSymbol}
-                    onChange={(e) => setSelectedSymbol(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedSymbol(e.target.value);
+                      setTradeMessage(null);
+                    }}
                     className="w-full bg-[#0c0d10] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-emerald-500"
                   >
                     {assets.map((a) => (
@@ -561,7 +632,12 @@ export default function Home() {
               {assets.map((a) => (
                 <div
                   key={`exp-${a.symbol}`}
-                  className="bg-[#14161c] border border-white/5 rounded-2xl p-4 flex items-center justify-between"
+                  onClick={() => {
+                    setSelectedSymbol(a.symbol);
+                    setTradeMessage(null);
+                    setActiveTab('trade');
+                  }}
+                  className="bg-[#14161c] hover:bg-[#191c24] border border-white/5 rounded-2xl p-4 flex items-center justify-between transition cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center font-bold">
@@ -569,12 +645,14 @@ export default function Home() {
                     </div>
                     <div>
                       <div className="text-sm font-bold">{a.name}</div>
-                      <div className="text-xs text-zinc-400">{a.symbol}</div>
+                      <div className="text-xs text-zinc-400">
+                        {a.symbol} • Bal: {a.amount}
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold">${formatUsd(a.price)}</div>
-                    <div className="text-xs text-zinc-400">Base: ${formatUsd(a.basePrice)}</div>
+                    <div className="text-sm font-bold">${formatCoinPrice(a.price)}</div>
+                    <div className="text-xs text-emerald-400">Trade →</div>
                   </div>
                 </div>
               ))}
