@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
 interface Asset {
   symbol: string;
@@ -154,36 +154,14 @@ const INITIAL_ACTIVITIES: ActivityItem[] = [
   },
 ];
 
-const STORAGE_ASSETS_KEY = 'nexus_wallet_assets_v1';
-const STORAGE_ACTIVITIES_KEY = 'nexus_wallet_activities_v1';
-
-async function fetchCoinbaseSpotPrice(symbol: string): Promise<number | null> {
-  if (symbol === 'USDC') return 1.0;
-  if (symbol === 'NVDA') return null;
-
-  try {
-    const res = await fetch(
-      `https://api.coinbase.com/v2/prices/${encodeURIComponent(symbol)}-USD/spot`,
-      { cache: 'no-store' }
-    );
-    if (!res.ok) return null;
-    const json = await res.json();
-    const amountStr = json?.data?.amount;
-    const parsed = parseFloat(amountStr);
-    return !isNaN(parsed) && parsed > 0 ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'home' | 'trade' | 'explore' | 'activity'>('home');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
-  const [hasHydratedStorage, setHasHydratedStorage] = useState<boolean>(false);
+  const [activities, setActivities] = useState<ActivityItem[]>(INITIAL_ACTIVITIES);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
-  const [isCoinbaseSynced, setIsCoinbaseSynced] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'offline'>('syncing');
 
   // Trade state
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -193,121 +171,102 @@ export default function Home() {
   const [lastEdited, setLastEdited] = useState<'usd' | 'coin'>('usd');
   const [tradeMessage, setTradeMessage] = useState<string | null>(null);
 
-  // Activity log
-  const [activities, setActivities] = useState<ActivityItem[]>(INITIAL_ACTIVITIES);
+  const lastUpdatedAtRef = useRef<number>(0);
+  const isSavingRef = useRef<boolean>(false);
 
-  const symbolsKey = useMemo(
-    () => assets.map((a) => a.symbol).join(','),
-    [assets]
-  );
-
-  useEffect(() => {
-    const savedStatus = localStorage.getItem('nexus_logged_in');
-    if (savedStatus === 'false') {
-      setIsLoggedIn(false);
-    }
+  const pullWalletFromServer = useCallback(async (force = false) => {
+    if (isSavingRef.current && !force) return;
 
     try {
-      const savedAssets = localStorage.getItem(STORAGE_ASSETS_KEY);
-      if (savedAssets) {
-        const parsedAssets = JSON.parse(savedAssets);
-        if (Array.isArray(parsedAssets) && parsedAssets.length > 0) {
-          setAssets(parsedAssets);
-        }
+      const res = await fetch('/api/wallet', { cache: 'no-store' });
+      if (!res.ok) {
+        setSyncStatus('offline');
+        return;
       }
 
-      const savedActivities = localStorage.getItem(STORAGE_ACTIVITIES_KEY);
-      if (savedActivities) {
-        const parsedActivities = JSON.parse(savedActivities);
-        if (Array.isArray(parsedActivities)) {
-          setActivities(parsedActivities);
+      const data = await res.json();
+      if (Array.isArray(data?.assets) && Array.isArray(data?.activities)) {
+        const remoteTs = typeof data.updatedAt === 'number' ? data.updatedAt : 0;
+        if (force || remoteTs !== lastUpdatedAtRef.current) {
+          lastUpdatedAtRef.current = remoteTs;
+          setAssets(data.assets);
+          setActivities(data.activities);
         }
+        setSyncStatus('synced');
       }
-    } catch (err) {
-      console.error('Failed to restore wallet state from localStorage:', err);
-    } finally {
-      setHasHydratedStorage(true);
+    } catch {
+      setSyncStatus('offline');
     }
   }, []);
 
-  // Cập nhật giá thực tế từ Coinbase API mỗi 5 giây
-  useEffect(() => {
-    let isCancelled = false;
-    const symbols = symbolsKey.split(',').filter(Boolean);
+  const pushWalletToServer = useCallback(
+    async (nextAssets: Asset[], nextActivities: ActivityItem[]) => {
+      isSavingRef.current = true;
+      try {
+        setSyncStatus('syncing');
+        const res = await fetch('/api/wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ assets: nextAssets, activities: nextActivities }),
+        });
 
-    const syncCoinbasePrices = async () => {
-      const entries = await Promise.all(
-        symbols.map(async (sym) => {
-          const livePrice = await fetchCoinbaseSpotPrice(sym);
-          return [sym, livePrice] as const;
-        })
-      );
+        if (!res.ok) {
+          setSyncStatus('offline');
+          return;
+        }
 
-      if (isCancelled) return;
-
-      const priceMap = new Map<string, number | null>(entries);
-      const anyFetched = entries.some(([sym, p]) => sym !== 'USDC' && p !== null);
-      if (anyFetched) {
-        setIsCoinbaseSynced(true);
+        const saved = await res.json();
+        if (typeof saved?.updatedAt === 'number') {
+          lastUpdatedAtRef.current = saved.updatedAt;
+        }
+        if (Array.isArray(saved?.assets) && Array.isArray(saved?.activities)) {
+          setAssets(saved.assets);
+          setActivities(saved.activities);
+        }
+        setSyncStatus('synced');
+      } catch {
+        setSyncStatus('offline');
+      } finally {
+        isSavingRef.current = false;
       }
+    },
+    []
+  );
 
-      setAssets((prev) =>
-        prev.map((asset) => {
-          if (asset.symbol === 'USDC') {
-            return { ...asset, price: 1.0, change: '0.0%' };
-          }
+  // Đồng bộ ví giữa laptop và điện thoại khi đang đăng nhập
+  useEffect(() => {
+    if (!isLoggedIn) return;
 
-          const cbPrice = priceMap.get(asset.symbol);
-          if (cbPrice !== undefined && cbPrice !== null) {
-            const decimals = cbPrice < 2 ? 4 : 2;
-            const formattedPrice = Number(cbPrice.toFixed(decimals));
-            const diffPct = ((formattedPrice - asset.basePrice) / asset.basePrice) * 100;
-            const sign = diffPct >= 0 ? '+' : '';
-            return {
-              ...asset,
-              price: formattedPrice,
-              change: `${sign}${diffPct.toFixed(2)}%`,
-            };
-          }
+    pullWalletFromServer(true);
 
-          return asset;
-        })
-      );
+    const handleSyncOnReturn = () => {
+      if (document.visibilityState === 'visible') {
+        pullWalletFromServer(true);
+      }
     };
 
-    syncCoinbasePrices();
-    const interval = setInterval(syncCoinbasePrices, 5000);
+    window.addEventListener('focus', handleSyncOnReturn);
+    document.addEventListener('visibilitychange', handleSyncOnReturn);
+
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        pullWalletFromServer(false);
+      }
+    }, 3000);
 
     return () => {
-      isCancelled = true;
-      clearInterval(interval);
+      window.removeEventListener('focus', handleSyncOnReturn);
+      document.removeEventListener('visibilitychange', handleSyncOnReturn);
+      clearInterval(pollInterval);
     };
-  }, [symbolsKey]);
-
-  useEffect(() => {
-    if (!hasHydratedStorage) return;
-    try {
-      localStorage.setItem(STORAGE_ASSETS_KEY, JSON.stringify(assets));
-    } catch (err) {
-      console.error('Failed to save wallet assets to localStorage:', err);
-    }
-  }, [assets, hasHydratedStorage]);
-
-  useEffect(() => {
-    if (!hasHydratedStorage) return;
-    try {
-      localStorage.setItem(STORAGE_ACTIVITIES_KEY, JSON.stringify(activities));
-    } catch (err) {
-      console.error('Failed to save wallet activities to localStorage:', err);
-    }
-  }, [activities, hasHydratedStorage]);
+  }, [isLoggedIn, pullWalletFromServer]);
 
   const selectedAsset = useMemo(
     () => assets.find((a) => a.symbol === selectedSymbol) || assets[0],
     [assets, selectedSymbol]
   );
 
-  // Đồng bộ quy đổi USD <-> Coin khi đổi input hoặc giá Coinbase cập nhật
   useEffect(() => {
     const currentPrice = selectedAsset?.price || 1;
     if (lastEdited === 'usd') {
@@ -367,16 +326,6 @@ export default function Home() {
     ];
   }, [assets, searchQuery]);
 
-  const handleSignOut = () => {
-    localStorage.setItem('nexus_logged_in', 'false');
-    setIsLoggedIn(false);
-  };
-
-  const handleSignIn = () => {
-    localStorage.setItem('nexus_logged_in', 'true');
-    setIsLoggedIn(true);
-  };
-
   const handleCopyAddress = (addr: string) => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(addr);
@@ -387,7 +336,7 @@ export default function Home() {
     }, 1500);
   };
 
-  const handleExecuteTrade = (e: React.FormEvent) => {
+  const handleExecuteTrade = async (e: React.FormEvent) => {
     e.preventDefault();
     setTradeMessage(null);
 
@@ -410,34 +359,29 @@ export default function Home() {
     }
 
     const soldCompletely =
-      tradeMode === 'sell' && Number(Math.max(0, selectedAsset.amount - coinAmount).toFixed(8)) <= 0;
+      tradeMode === 'sell' &&
+      Number(Math.max(0, selectedAsset.amount - coinAmount).toFixed(8)) <= 0;
 
-    setAssets((prev) => {
-      const updated = prev
-        .map((item) => {
-          if (item.symbol === selectedAsset.symbol) {
-            const updatedAmount =
-              tradeMode === 'buy' ? item.amount + coinAmount : item.amount - coinAmount;
-            return { ...item, amount: Number(Math.max(0, updatedAmount).toFixed(8)) };
-          }
-          // Giữ nguyên số dư các tài sản khác (kể cả USDC)
-          return item;
-        })
-        .filter((item) => {
-          // Nếu bán hết (số dư về 0) thì gỡ tài sản khỏi ví
-          if (tradeMode === 'sell' && item.symbol === selectedAsset.symbol && item.amount <= 0) {
-            return false;
-          }
-          return true;
-        });
+    const updatedAssets = assets
+      .map((item) => {
+        if (item.symbol === selectedAsset.symbol) {
+          const updatedAmount =
+            tradeMode === 'buy' ? item.amount + coinAmount : item.amount - coinAmount;
+          return { ...item, amount: Number(Math.max(0, updatedAmount).toFixed(8)) };
+        }
+        return item;
+      })
+      .filter((item) => {
+        if (tradeMode === 'sell' && item.symbol === selectedAsset.symbol && item.amount <= 0) {
+          return false;
+        }
+        return true;
+      });
 
-      const remainingWithBalance = updated.filter((item) => item.amount > 0);
-      if (soldCompletely && remainingWithBalance.length > 0) {
-        setSelectedSymbol(remainingWithBalance[0].symbol);
-      }
-
-      return updated;
-    });
+    const remainingWithBalance = updatedAssets.filter((item) => item.amount > 0);
+    if (soldCompletely && remainingWithBalance.length > 0) {
+      setSelectedSymbol(remainingWithBalance[0].symbol);
+    }
 
     const newActivity: ActivityItem = {
       id: `act-${Date.now()}`,
@@ -448,11 +392,16 @@ export default function Home() {
       timestamp: 'Just now',
     };
 
-    setActivities((prev) => [newActivity, ...prev]);
+    const nextActivities = [newActivity, ...activities];
+
+    setAssets(updatedAssets);
+    setActivities(nextActivities);
+    await pushWalletToServer(updatedAssets, nextActivities);
+
     setTradeMessage(
       soldCompletely
-        ? `Đã bán hết ${selectedAsset.symbol} và gỡ khỏi ví ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
-        : `${tradeMode === 'buy' ? 'Đã mua thêm' : 'Đã bán'} ${coinAmount.toFixed(6)} ${selectedAsset.symbol} ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
+        ? `Đã bán hết ${selectedAsset.symbol} và đồng bộ ví ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
+        : `${tradeMode === 'buy' ? 'Đã mua thêm' : 'Đã bán'} ${coinAmount.toFixed(6)} ${selectedAsset.symbol} ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) — đã đồng bộ.`
     );
   };
 
@@ -464,36 +413,46 @@ export default function Home() {
       ? val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
       : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  const syncLabel =
+    syncStatus === 'synced'
+      ? 'Wallet 1 • Synced (Laptop & Phone)'
+      : syncStatus === 'syncing'
+      ? 'Wallet 1 • Syncing...'
+      : 'Wallet 1 • Offline / Retrying';
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#09090b] text-white flex items-center justify-center p-4">
         <div className="w-full max-w-[420px] bg-[#121216] border border-white/10 rounded-3xl p-7 shadow-2xl space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center font-bold text-emerald-400">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-sm font-bold text-emerald-400">
                 N
               </div>
-              <span className="font-bold text-lg tracking-tight">NexusPay</span>
+              <span className="text-base font-bold">NexusPay</span>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 text-zinc-400 border border-white/10">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-300">
               Web3 Wallet
             </span>
           </div>
 
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold">Signed Out</h1>
-            <p className="text-sm text-zinc-400">
-              Your session is locked. Sign back in to access Wallet 1 (Harry Bui) and Coinbase live feeds.
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-extrabold">Signed Out</h1>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Your session is locked. Sign back in to access Wallet 1 across your devices.
             </p>
           </div>
 
-          <div className="bg-black/40 border border-white/5 rounded-2xl p-4 space-y-1">
+          <div className="bg-[#0c0d10] border border-white/10 rounded-2xl p-4 space-y-1">
             <div className="text-xs text-zinc-400">Estimated Portfolio</div>
-            <div className="text-xl font-bold text-emerald-400">${formatUsd(totalPortfolioUsd)}</div>
+            <div className="text-2xl font-extrabold text-emerald-400">
+              ${formatUsd(totalPortfolioUsd)}
+            </div>
           </div>
 
           <button
-            onClick={handleSignIn}
+            type="button"
+            onClick={() => setIsLoggedIn(true)}
             className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition cursor-pointer"
           >
             Sign Back In to Wallet 1
@@ -506,7 +465,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#050507] text-white flex justify-center">
       <div className="relative w-full max-w-[460px] min-h-screen bg-[#0c0d10] border-x border-white/10 flex flex-col pb-24">
-        {/* Top Header */}
         <header className="sticky top-0 z-20 bg-[#0c0d10]/90 backdrop-blur-md px-5 pt-4 pb-3 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-sm font-bold text-emerald-400">
@@ -514,37 +472,32 @@ export default function Home() {
             </div>
             <div>
               <div className="text-sm font-bold leading-tight">NexusPay</div>
-              <div className="text-[11px] text-emerald-400 leading-tight">
-                {isCoinbaseSynced ? 'Wallet 1 • Coinbase Live Feed' : 'Wallet 1 • Connecting Coinbase...'}
-              </div>
+              <div className="text-[11px] text-emerald-400 leading-tight">{syncLabel}</div>
             </div>
           </div>
 
           <button
-            onClick={handleSignOut}
-            className="text-xs px-3 py-1.5 rounded-xl bg-white/5 hover:bg-red-500/20 text-zinc-300 hover:text-red-300 border border-white/10 transition cursor-pointer"
+            type="button"
+            onClick={() => setIsLoggedIn(false)}
+            className="relative z-30 text-xs px-3 py-1.5 rounded-xl bg-white/5 hover:bg-red-500/20 text-zinc-300 hover:text-red-300 border border-white/10 transition cursor-pointer"
           >
             Sign Out
           </button>
         </header>
 
-        {/* Main Content */}
         <main className="flex-1 px-5 pt-5 space-y-6">
           {activeTab === 'home' && (
             <>
-              {/* Portfolio Balance */}
               <section className="text-center space-y-1.5 pt-1">
                 <div className="text-3xl sm:text-4xl font-extrabold tracking-tight">
                   ${formatUsd(totalPortfolioUsd)}
                 </div>
-                <div className="text-xs font-medium text-emerald-400">
-                  {isCoinbaseSynced ? 'Wallet 1 (Coinbase Live Spot)' : 'Wallet 1 (Live Feed Active)'}
-                </div>
+                <div className="text-xs font-medium text-emerald-400">{syncLabel}</div>
               </section>
 
-              {/* Action Buttons */}
               <section className="grid grid-cols-2 gap-3">
                 <button
+                  type="button"
                   onClick={() => setActiveTab('trade')}
                   className="bg-[#16181e] hover:bg-[#1e2129] border border-white/10 rounded-2xl py-4 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
                 >
@@ -555,6 +508,7 @@ export default function Home() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setActiveTab('activity')}
                   className="bg-[#16181e] hover:bg-[#1e2129] border border-white/10 rounded-2xl py-4 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
                 >
@@ -565,7 +519,6 @@ export default function Home() {
                 </button>
               </section>
 
-              {/* Search Input & Quick Buy Results */}
               <section className="space-y-2.5">
                 <div className="relative">
                   <input
@@ -580,7 +533,6 @@ export default function Home() {
                       type="button"
                       onClick={() => setSearchQuery('')}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-white px-1.5 py-0.5 cursor-pointer"
-                      aria-label="Clear search"
                     >
                       ✕
                     </button>
@@ -621,23 +573,12 @@ export default function Home() {
 
                           <button
                             type="button"
-                            onClick={async () => {
-                              const livePrice = await fetchCoinbaseSpotPrice(coin.symbol);
-                              const resolvedCoin =
-                                livePrice !== null
-                                  ? {
-                                      ...coin,
-                                      basePrice: livePrice,
-                                      price: livePrice,
-                                    }
-                                  : coin;
-
-                              setAssets((prev) => {
-                                const exists = prev.some((item) => item.symbol === resolvedCoin.symbol);
-                                if (exists) return prev;
-                                return [...prev, resolvedCoin];
-                              });
-                              setSelectedSymbol(resolvedCoin.symbol);
+                            onClick={() => {
+                              const nextAssets = assets.some((item) => item.symbol === coin.symbol)
+                                ? assets
+                                : [...assets, coin];
+                              setAssets(nextAssets);
+                              setSelectedSymbol(coin.symbol);
                               setTradeMode('buy');
                               setTradeMessage(null);
                               setActiveTab('trade');
@@ -653,7 +594,6 @@ export default function Home() {
                 )}
               </section>
 
-              {/* Promo Banner */}
               <section
                 onClick={() => setActiveTab('trade')}
                 className="bg-gradient-to-r from-[#171b24] to-[#13161d] border border-white/10 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:border-white/20 transition"
@@ -668,7 +608,6 @@ export default function Home() {
                 </div>
               </section>
 
-              {/* Fund your wallet addresses */}
               <section className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-bold text-zinc-200">Fund your wallet</h2>
@@ -708,11 +647,10 @@ export default function Home() {
                 </div>
               </section>
 
-              {/* Your Assets */}
               <section className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-bold text-zinc-200">Your Assets (Harry Bui)</h2>
-                  <span className="text-xs font-medium text-emerald-400">• Coinbase Pricing</span>
+                  <span className="text-xs font-medium text-emerald-400">• Synced Wallet</span>
                 </div>
 
                 <div className="space-y-2.5">
@@ -774,7 +712,6 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* Buy / Sell Toggle */}
               <div className="grid grid-cols-2 gap-2 bg-[#14161c] p-1.5 rounded-2xl border border-white/10">
                 <button
                   type="button"
@@ -880,7 +817,7 @@ export default function Home() {
 
           {activeTab === 'explore' && (
             <section className="space-y-3">
-              <h1 className="text-xl font-bold">Market Watch (Coinbase)</h1>
+              <h1 className="text-xl font-bold">Market Watch (Synced)</h1>
               {assets.map((a) => (
                 <div
                   key={`exp-${a.symbol}`}
@@ -937,9 +874,9 @@ export default function Home() {
           )}
         </main>
 
-        {/* Bottom Navigation Bar */}
         <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2.5rem)] max-w-[412px] h-16 bg-[#161821]/95 backdrop-blur-xl border border-white/10 rounded-2xl px-2 flex items-center justify-around z-30">
           <button
+            type="button"
             onClick={() => setActiveTab('home')}
             className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${
               activeTab === 'home' ? 'text-emerald-400' : 'text-zinc-400'
@@ -950,6 +887,7 @@ export default function Home() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('trade')}
             className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${
               activeTab === 'trade' ? 'text-emerald-400' : 'text-zinc-400'
@@ -960,6 +898,7 @@ export default function Home() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('explore')}
             className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${
               activeTab === 'explore' ? 'text-emerald-400' : 'text-zinc-400'
@@ -970,6 +909,7 @@ export default function Home() {
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('activity')}
             className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${
               activeTab === 'activity' ? 'text-emerald-400' : 'text-zinc-400'
