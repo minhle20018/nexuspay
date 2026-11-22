@@ -29,23 +29,17 @@ interface MarketPayload {
 
 const LIVE_SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
 
-const INITIAL_ASSETS: Asset[] = [
-  { symbol: 'BTC', name: 'Bitcoin', basePrice: 0, price: 0, change: '+0.0%', amount: 87.00205338809035, icon: '₿', address: 'bc1q098234hjt994k' },
-  { symbol: 'ETH', name: 'Ethereum', basePrice: 0, price: 0, change: '+0.0%', amount: 1748.1748908296943, icon: 'Ξ', address: '0x71C84922b9183Ea482b' },
-  { symbol: 'SOL', name: 'Solana', basePrice: 0, price: 0, change: '+0.0%', amount: 12.5, icon: '◎', address: '8SExE819vJxK994nx' },
-  { symbol: 'BNB', name: 'BNB', basePrice: 0, price: 0, change: '+0.0%', amount: 1.2, icon: 'B' },
-  { symbol: 'USDC', name: 'USD Coin', basePrice: 1.0, price: 1.0, change: '0.0%', amount: 1000448.6, icon: '$' },
-  { symbol: 'XRP', name: 'Ripple', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: '✕' },
-  { symbol: 'DOGE', name: 'Dogecoin', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: 'Ð' },
-  { symbol: 'ADA', name: 'Cardano', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: '₳' },
-  { symbol: 'AVAX', name: 'Avalanche', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: 'A' },
-  { symbol: 'LINK', name: 'Chainlink', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: '⬡' },
-];
-
-const INITIAL_ACTIVITIES: ActivityItem[] = [
-  { id: 'act-1', type: 'Receive', symbol: 'BTC', amount: 87.00205339, usdValue: 0, timestamp: 'Today, 08:15 AM' },
-  { id: 'act-2', type: 'Receive', symbol: 'ETH', amount: 1748.17489083, usdValue: 0, timestamp: 'Yesterday, 04:40 PM' },
-  { id: 'act-3', type: 'Receive', symbol: 'USDC', amount: 1000448.6, usdValue: 1000448.6, timestamp: '2 days ago' },
+const EMPTY_ASSETS: Asset[] = [
+  { symbol: 'BTC', name: 'Bitcoin', basePrice: 0, price: 0, change: '—', amount: 0, icon: '₿', address: 'bc1q098234hjt994k' },
+  { symbol: 'ETH', name: 'Ethereum', basePrice: 0, price: 0, change: '—', amount: 0, icon: 'Ξ', address: '0x71C84922b9183Ea482b' },
+  { symbol: 'SOL', name: 'Solana', basePrice: 0, price: 0, change: '—', amount: 0, icon: '◎', address: '8SExE819vJxK994nx' },
+  { symbol: 'BNB', name: 'BNB', basePrice: 0, price: 0, change: '—', amount: 0, icon: 'B' },
+  { symbol: 'USDC', name: 'USD Coin', basePrice: 1.0, price: 1.0, change: '0.0%', amount: 0, icon: '$' },
+  { symbol: 'XRP', name: 'Ripple', basePrice: 0, price: 0, change: '—', amount: 0, icon: '✕' },
+  { symbol: 'DOGE', name: 'Dogecoin', basePrice: 0, price: 0, change: '—', amount: 0, icon: 'Ð' },
+  { symbol: 'ADA', name: 'Cardano', basePrice: 0, price: 0, change: '—', amount: 0, icon: '₳' },
+  { symbol: 'AVAX', name: 'Avalanche', basePrice: 0, price: 0, change: '—', amount: 0, icon: 'A' },
+  { symbol: 'LINK', name: 'Chainlink', basePrice: 0, price: 0, change: '—', amount: 0, icon: '⬡' },
 ];
 
 function formatChangeFromStats(openVal: number, lastVal: number): string | null {
@@ -89,8 +83,8 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'home' | 'trade' | 'explore' | 'activity'>('home');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
-  const [activities, setActivities] = useState<ActivityItem[]>(INITIAL_ACTIVITIES);
+  const [assets, setAssets] = useState<Asset[]>(EMPTY_ASSETS);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'offline'>('syncing');
   const [priceUpdatedAt, setPriceUpdatedAt] = useState<string>('Updating...');
@@ -334,7 +328,7 @@ export default function Home() {
             name: `${upper} Asset`,
             basePrice: 0,
             price: latestMarketRef.current.prices[upper] || 0,
-            change: latestMarketRef.current.changes[upper] || '+0.0%',
+            change: latestMarketRef.current.changes[upper] || '—',
             amount: 0,
             icon: '✨',
           },
@@ -615,7 +609,7 @@ export default function Home() {
                   {walletAssets.map((asset) => {
                     const usdTotal = asset.amount * asset.price;
                     const isNegative = asset.change.startsWith('-');
-                    const isNeutral = asset.change === '0.0%';
+                    const isNeutral = asset.change === '0.0%' || asset.change === '—';
 
                     return (
                       <div
