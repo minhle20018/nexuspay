@@ -71,7 +71,6 @@ const INITIAL_ASSETS: Asset[] = [
     amount: 1000448.6,
     icon: '$',
   },
-  // Các đồng tiền khác — có thể Buy & Sell đầy đủ
   {
     symbol: 'XRP',
     name: 'Ripple',
@@ -116,6 +115,15 @@ const INITIAL_ASSETS: Asset[] = [
     change: '+1.5%',
     amount: 0,
     icon: '⬡',
+  },
+  {
+    symbol: 'NVDA',
+    name: 'NVIDIA Corp',
+    basePrice: 125.53,
+    price: 125.53,
+    change: '-14.0%',
+    amount: 0,
+    icon: '🟢',
   },
 ];
 
@@ -255,17 +263,6 @@ export default function Home() {
       return;
     }
 
-    const usdcAsset = assets.find((a) => a.symbol === 'USDC');
-    if (
-      tradeMode === 'buy' &&
-      selectedAsset.symbol !== 'USDC' &&
-      usdcAsset &&
-      usdAmount > usdcAsset.amount
-    ) {
-      setTradeMessage('Không đủ số dư USDC để mua.');
-      return;
-    }
-
     setAssets((prev) =>
       prev.map((item) => {
         if (item.symbol === selectedAsset.symbol) {
@@ -273,11 +270,7 @@ export default function Home() {
             tradeMode === 'buy' ? item.amount + coinAmount : item.amount - coinAmount;
           return { ...item, amount: Number(Math.max(0, updatedAmount).toFixed(8)) };
         }
-        if (item.symbol === 'USDC' && selectedAsset.symbol !== 'USDC') {
-          const updatedUsdc =
-            tradeMode === 'buy' ? item.amount - usdAmount : item.amount + usdAmount;
-          return { ...item, amount: Number(Math.max(0, updatedUsdc).toFixed(2)) };
-        }
+        // Giữ nguyên số dư các tài sản khác (kể cả USDC), không trừ/cộng chéo
         return item;
       })
     );
@@ -293,7 +286,7 @@ export default function Home() {
 
     setActivities((prev) => [newActivity, ...prev]);
     setTradeMessage(
-      `${tradeMode === 'buy' ? 'Đã mua' : 'Đã bán'} ${coinAmount.toFixed(6)} ${selectedAsset.symbol} ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
+      `${tradeMode === 'buy' ? 'Đã mua thêm' : 'Đã bán'} ${coinAmount.toFixed(6)} ${selectedAsset.symbol} ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
     );
   };
 
@@ -404,15 +397,83 @@ export default function Home() {
                 </button>
               </section>
 
-              {/* Search Input */}
-              <section>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search Assets or URL"
-                  className="w-full bg-[#14161c] border border-white/10 rounded-2xl px-4 py-3 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/60"
-                />
+              {/* Search Input & Quick Buy Results */}
+              <section className="space-y-2.5">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search coin to buy (e.g. BTC, DOGE, NVDA...)"
+                    className="w-full bg-[#14161c] border border-white/10 rounded-2xl px-4 py-3 pr-10 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/60"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-white px-1.5 py-0.5 cursor-pointer"
+                      aria-label="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {searchQuery.trim() !== '' && (
+                  <div className="bg-[#12141a] border border-emerald-500/20 rounded-2xl p-3 space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                        Search Results ({filteredAssets.length})
+                      </span>
+                      <span className="text-[11px] text-emerald-400">Tap Buy to trade</span>
+                    </div>
+
+                    {filteredAssets.length === 0 ? (
+                      <div className="text-xs text-zinc-400 text-center py-3">
+                        Không tìm thấy tài sản nào khớp với &ldquo;{searchQuery}&rdquo;.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {filteredAssets.map((coin) => (
+                          <div
+                            key={`search-${coin.symbol}`}
+                            className="bg-[#181b23] border border-white/5 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-sm shrink-0">
+                                {coin.icon}
+                              </div>
+                              <div className="truncate">
+                                <div className="text-sm font-bold truncate">
+                                  {coin.name}{' '}
+                                  <span className="text-xs font-normal text-zinc-400">
+                                    ({coin.symbol})
+                                  </span>
+                                </div>
+                                <div className="text-xs text-zinc-400">
+                                  ${formatCoinPrice(coin.price)} • Bal: {coin.amount}
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedSymbol(coin.symbol);
+                                setTradeMode('buy');
+                                setTradeMessage(null);
+                                setActiveTab('trade');
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold shrink-0 transition cursor-pointer"
+                            >
+                              Buy
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
 
               {/* Promo Banner */}
@@ -559,7 +620,7 @@ export default function Home() {
                 className="bg-[#14161c] border border-white/10 rounded-2xl p-4 space-y-4"
               >
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">Select Asset (All Coins)</label>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Select Asset (All)</label>
                   <select
                     value={selectedSymbol}
                     onChange={(e) => {
