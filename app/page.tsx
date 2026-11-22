@@ -1,5 +1,4 @@
-﻿$pageCode = @'
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
@@ -755,11 +754,4 @@ export default function Home() {
       </div>
     </div>
   );
-}
-'@
-
-if (Test-Path ".\app\page.tsx") {
-  Set-Content -Path ".\app\page.tsx" -Value $pageCode -Encoding utf8
-} elseif (Test-Path ".\page.tsx") {
-  Set-Content -Path ".\page.tsx" -Value $pageCode -Encoding utf8
 }
