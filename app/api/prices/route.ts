@@ -1,7 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-
 const DEFAULT_SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'USDC', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
 
 async function fetchSpotPrice(symbol: string): Promise<number | null> {
