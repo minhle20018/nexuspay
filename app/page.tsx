@@ -226,6 +226,11 @@ export default function Home() {
     [assets]
   );
 
+  const walletAssets = useMemo(
+    () => assets.filter((asset) => asset.amount > 0),
+    [assets]
+  );
+
   const searchResults = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return [];
@@ -320,8 +325,9 @@ export default function Home() {
           return true;
         });
 
-      if (soldCompletely && updated.length > 0) {
-        setSelectedSymbol(updated[0].symbol);
+      const remainingWithBalance = updated.filter((item) => item.amount > 0);
+      if (soldCompletely && remainingWithBalance.length > 0) {
+        setSelectedSymbol(remainingWithBalance[0].symbol);
       }
 
       return updated;
@@ -592,7 +598,7 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-2.5">
-                  {assets.map((asset) => {
+                  {walletAssets.map((asset) => {
                     const usdTotal = asset.amount * asset.price;
                     const isNegative = asset.change.startsWith('-');
                     const isNeutral = asset.change === '0.0%';
