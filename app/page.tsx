@@ -236,6 +236,36 @@ export default function Home() {
     );
   }, [assets, searchQuery]);
 
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim();
+    if (!q) return [];
+    const lower = q.toLowerCase();
+    const upper = q.toUpperCase();
+
+    const matched = assets.filter(
+      (a) =>
+        a.name.toLowerCase().includes(lower) ||
+        a.symbol.toLowerCase().includes(lower) ||
+        (a.address && a.address.toLowerCase().includes(lower))
+    );
+
+    if (matched.length > 0) {
+      return matched;
+    }
+
+    return [
+      {
+        symbol: upper,
+        name: `${upper} Asset`,
+        basePrice: 100.0,
+        price: 100.0,
+        change: '+0.0%',
+        amount: 0,
+        icon: '✨',
+      },
+    ];
+  }, [assets, searchQuery]);
+
   const handleSignOut = () => {
     localStorage.setItem('nexus_logged_in', 'false');
     setIsLoggedIn(false);
@@ -270,7 +300,7 @@ export default function Home() {
             tradeMode === 'buy' ? item.amount + coinAmount : item.amount - coinAmount;
           return { ...item, amount: Number(Math.max(0, updatedAmount).toFixed(8)) };
         }
-        // Giữ nguyên số dư các tài sản khác (kể cả USDC), không trừ/cộng chéo
+        // Giữ nguyên số dư các tài sản khác (kể cả USDC)
         return item;
       })
     );
@@ -404,7 +434,7 @@ export default function Home() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search coin to buy (e.g. BTC, DOGE, NVDA...)"
+                    placeholder="Search any symbol to buy (e.g. BTC, DOGE, NVDA...)"
                     className="w-full bg-[#14161c] border border-white/10 rounded-2xl px-4 py-3 pr-10 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/60"
                   />
                   {searchQuery && (
@@ -419,59 +449,58 @@ export default function Home() {
                   )}
                 </div>
 
-                {searchQuery.trim() !== '' && (
-                  <div className="bg-[#12141a] border border-emerald-500/20 rounded-2xl p-3 space-y-2">
+                {searchQuery.trim().length > 0 && (
+                  <div className="bg-[#12141a] border border-emerald-500/30 rounded-2xl p-3 space-y-2">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                        Search Results ({filteredAssets.length})
+                        Search Results ({searchResults.length})
                       </span>
                       <span className="text-[11px] text-emerald-400">Tap Buy to trade</span>
                     </div>
 
-                    {filteredAssets.length === 0 ? (
-                      <div className="text-xs text-zinc-400 text-center py-3">
-                        Không tìm thấy tài sản nào khớp với &ldquo;{searchQuery}&rdquo;.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {filteredAssets.map((coin) => (
-                          <div
-                            key={`search-${coin.symbol}`}
-                            className="bg-[#181b23] border border-white/5 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-sm shrink-0">
-                                {coin.icon}
+                    <div className="space-y-2">
+                      {searchResults.map((coin) => (
+                        <div
+                          key={`search-${coin.symbol}`}
+                          className="bg-[#181b23] border border-white/5 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-sm shrink-0">
+                              {coin.icon}
+                            </div>
+                            <div className="truncate">
+                              <div className="text-sm font-bold truncate">
+                                {coin.name}{' '}
+                                <span className="text-xs font-normal text-zinc-400">
+                                  ({coin.symbol})
+                                </span>
                               </div>
-                              <div className="truncate">
-                                <div className="text-sm font-bold truncate">
-                                  {coin.name}{' '}
-                                  <span className="text-xs font-normal text-zinc-400">
-                                    ({coin.symbol})
-                                  </span>
-                                </div>
-                                <div className="text-xs text-zinc-400">
-                                  ${formatCoinPrice(coin.price)} • Bal: {coin.amount}
-                                </div>
+                              <div className="text-xs text-zinc-400">
+                                ${formatCoinPrice(coin.price)} • Bal: {coin.amount}
                               </div>
                             </div>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedSymbol(coin.symbol);
-                                setTradeMode('buy');
-                                setTradeMessage(null);
-                                setActiveTab('trade');
-                              }}
-                              className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold shrink-0 transition cursor-pointer"
-                            >
-                              Buy
-                            </button>
                           </div>
-                        ))}
-                      </div>
-                    )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAssets((prev) => {
+                                const exists = prev.some((item) => item.symbol === coin.symbol);
+                                if (exists) return prev;
+                                return [...prev, coin];
+                              });
+                              setSelectedSymbol(coin.symbol);
+                              setTradeMode('buy');
+                              setTradeMessage(null);
+                              setActiveTab('trade');
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold shrink-0 transition cursor-pointer"
+                          >
+                            Buy
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </section>
