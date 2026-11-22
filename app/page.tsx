@@ -225,17 +225,6 @@ export default function Home() {
     [assets]
   );
 
-  const filteredAssets = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return assets;
-    return assets.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.symbol.toLowerCase().includes(q) ||
-        (a.address && a.address.toLowerCase().includes(q))
-    );
-  }, [assets, searchQuery]);
-
   const searchResults = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return [];
@@ -554,7 +543,7 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-2.5">
-                  {filteredAssets.map((asset) => {
+                  {assets.map((asset) => {
                     const usdTotal = asset.amount * asset.price;
                     const isNegative = asset.change.startsWith('-');
                     const isNeutral = asset.change === '0.0%';
