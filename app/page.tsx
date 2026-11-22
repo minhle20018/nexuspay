@@ -157,6 +157,25 @@ const INITIAL_ACTIVITIES: ActivityItem[] = [
 const STORAGE_ASSETS_KEY = 'nexus_wallet_assets_v1';
 const STORAGE_ACTIVITIES_KEY = 'nexus_wallet_activities_v1';
 
+async function fetchCoinbaseSpotPrice(symbol: string): Promise<number | null> {
+  if (symbol === 'USDC') return 1.0;
+  if (symbol === 'NVDA') return null;
+
+  try {
+    const res = await fetch(
+      `https://api.coinbase.com/v2/prices/${encodeURIComponent(symbol)}-USD/spot`,
+      { cache: 'no-store' }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const amountStr = json?.data?.amount;
+    const parsed = parseFloat(amountStr);
+    return !isNaN(parsed) && parsed > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'home' | 'trade' | 'explore' | 'activity'>('home');
@@ -164,6 +183,7 @@ export default function Home() {
   const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
   const [hasHydratedStorage, setHasHydratedStorage] = useState<boolean>(false);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+  const [isCoinbaseSynced, setIsCoinbaseSynced] = useState<boolean>(false);
 
   // Trade state
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -175,6 +195,11 @@ export default function Home() {
 
   // Activity log
   const [activities, setActivities] = useState<ActivityItem[]>(INITIAL_ACTIVITIES);
+
+  const symbolsKey = useMemo(
+    () => assets.map((a) => a.symbol).join(','),
+    [assets]
+  );
 
   useEffect(() => {
     const savedStatus = localStorage.getItem('nexus_logged_in');
@@ -203,26 +228,61 @@ export default function Home() {
     } finally {
       setHasHydratedStorage(true);
     }
+  }, []);
 
-    const interval = setInterval(() => {
+  // Cập nhật giá thực tế từ Coinbase API mỗi 5 giây
+  useEffect(() => {
+    let isCancelled = false;
+    const symbols = symbolsKey.split(',').filter(Boolean);
+
+    const syncCoinbasePrices = async () => {
+      const entries = await Promise.all(
+        symbols.map(async (sym) => {
+          const livePrice = await fetchCoinbaseSpotPrice(sym);
+          return [sym, livePrice] as const;
+        })
+      );
+
+      if (isCancelled) return;
+
+      const priceMap = new Map<string, number | null>(entries);
+      const anyFetched = entries.some(([sym, p]) => sym !== 'USDC' && p !== null);
+      if (anyFetched) {
+        setIsCoinbaseSynced(true);
+      }
+
       setAssets((prev) =>
         prev.map((asset) => {
           if (asset.symbol === 'USDC') {
-            return { ...asset, price: 1.0 };
+            return { ...asset, price: 1.0, change: '0.0%' };
           }
-          const swingPercent = (Math.random() * 0.4 - 0.2) / 100; // ±0.20% quanh basePrice
-          const decimals = asset.basePrice < 2 ? 4 : 2;
-          const nextPrice = Number((asset.basePrice * (1 + swingPercent)).toFixed(decimals));
-          return {
-            ...asset,
-            price: nextPrice > 0 ? nextPrice : asset.basePrice,
-          };
+
+          const cbPrice = priceMap.get(asset.symbol);
+          if (cbPrice !== undefined && cbPrice !== null) {
+            const decimals = cbPrice < 2 ? 4 : 2;
+            const formattedPrice = Number(cbPrice.toFixed(decimals));
+            const diffPct = ((formattedPrice - asset.basePrice) / asset.basePrice) * 100;
+            const sign = diffPct >= 0 ? '+' : '';
+            return {
+              ...asset,
+              price: formattedPrice,
+              change: `${sign}${diffPct.toFixed(2)}%`,
+            };
+          }
+
+          return asset;
         })
       );
-    }, 3000);
+    };
 
-    return () => clearInterval(interval);
-  }, []);
+    syncCoinbasePrices();
+    const interval = setInterval(syncCoinbasePrices, 5000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, [symbolsKey]);
 
   useEffect(() => {
     if (!hasHydratedStorage) return;
@@ -247,7 +307,7 @@ export default function Home() {
     [assets, selectedSymbol]
   );
 
-  // Đồng bộ quy đổi USD <-> Coin khi đổi input hoặc giá nhảy
+  // Đồng bộ quy đổi USD <-> Coin khi đổi input hoặc giá Coinbase cập nhật
   useEffect(() => {
     const currentPrice = selectedAsset?.price || 1;
     if (lastEdited === 'usd') {
@@ -423,7 +483,7 @@ export default function Home() {
           <div className="space-y-2">
             <h1 className="text-2xl font-bold">Signed Out</h1>
             <p className="text-sm text-zinc-400">
-              Your session is locked. Sign back in to access Wallet 1 (Harry Bui) and live asset feeds.
+              Your session is locked. Sign back in to access Wallet 1 (Harry Bui) and Coinbase live feeds.
             </p>
           </div>
 
@@ -454,7 +514,9 @@ export default function Home() {
             </div>
             <div>
               <div className="text-sm font-bold leading-tight">NexusPay</div>
-              <div className="text-[11px] text-emerald-400 leading-tight">Wallet 1 • Live Feed Active</div>
+              <div className="text-[11px] text-emerald-400 leading-tight">
+                {isCoinbaseSynced ? 'Wallet 1 • Coinbase Live Feed' : 'Wallet 1 • Connecting Coinbase...'}
+              </div>
             </div>
           </div>
 
@@ -476,7 +538,7 @@ export default function Home() {
                   ${formatUsd(totalPortfolioUsd)}
                 </div>
                 <div className="text-xs font-medium text-emerald-400">
-                  Wallet 1 (Live Feed Active)
+                  {isCoinbaseSynced ? 'Wallet 1 (Coinbase Live Spot)' : 'Wallet 1 (Live Feed Active)'}
                 </div>
               </section>
 
@@ -559,13 +621,23 @@ export default function Home() {
 
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
+                              const livePrice = await fetchCoinbaseSpotPrice(coin.symbol);
+                              const resolvedCoin =
+                                livePrice !== null
+                                  ? {
+                                      ...coin,
+                                      basePrice: livePrice,
+                                      price: livePrice,
+                                    }
+                                  : coin;
+
                               setAssets((prev) => {
-                                const exists = prev.some((item) => item.symbol === coin.symbol);
+                                const exists = prev.some((item) => item.symbol === resolvedCoin.symbol);
                                 if (exists) return prev;
-                                return [...prev, coin];
+                                return [...prev, resolvedCoin];
                               });
-                              setSelectedSymbol(coin.symbol);
+                              setSelectedSymbol(resolvedCoin.symbol);
                               setTradeMode('buy');
                               setTradeMessage(null);
                               setActiveTab('trade');
@@ -640,7 +712,7 @@ export default function Home() {
               <section className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-bold text-zinc-200">Your Assets (Harry Bui)</h2>
-                  <span className="text-xs font-medium text-emerald-400">• Live Pricing</span>
+                  <span className="text-xs font-medium text-emerald-400">• Coinbase Pricing</span>
                 </div>
 
                 <div className="space-y-2.5">
@@ -808,7 +880,7 @@ export default function Home() {
 
           {activeTab === 'explore' && (
             <section className="space-y-3">
-              <h1 className="text-xl font-bold">Market Watch</h1>
+              <h1 className="text-xl font-bold">Market Watch (Coinbase)</h1>
               {assets.map((a) => (
                 <div
                   key={`exp-${a.symbol}`}
