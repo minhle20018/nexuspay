@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 export default function Home() {
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Trạng thái đăng nhập & đăng xuất
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [inputUser, setInputUser] = useState('');
@@ -13,17 +13,17 @@ export default function Home() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Trạng thái cho Trade & Swap (hỗ trợ cả Mua và Bán Coin)
+  // Trạng thái cho Trade & Swap
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
   const [tradeAmount, setTradeAmount] = useState('1000');
   const [selectedCoin, setSelectedCoin] = useState('BTC');
 
-  // Danh sách tài sản khớp chuẩn số liệu triệu đô ($11.9M+)
+  // Số liệu chuẩn khớp ảnh IMG_3217.png
   const [assets, setAssets] = useState([
-    { symbol: 'BTC', name: 'Bitcoin', price: 77920.00, change: '+2.4%', amount: 87.00205338809035, icon: '₿' },
-    { symbol: 'ETH', name: 'Ethereum', price: 2272.91, change: '+1.8%', amount: 1748.1748908296943, icon: 'Ξ' },
-    { symbol: 'SOL', name: 'Solana', price: 98.47, change: '-0.5%', amount: 12.5, icon: '◎' },
-    { symbol: 'BNB', name: 'BNB', price: 707.95, change: '+3.1%', amount: 1.2, icon: 'B' },
+    { symbol: 'BTC', name: 'Bitcoin', price: 78000.01, change: '+2.4%', amount: 87.00205338809035, icon: '₿' },
+    { symbol: 'ETH', name: 'Ethereum', price: 2272.29, change: '+1.8%', amount: 1748.1748908296943, icon: 'Ξ' },
+    { symbol: 'SOL', name: 'Solana', price: 98.56, change: '-0.5%', amount: 12.5, icon: '◎' },
+    { symbol: 'BNB', name: 'BNB', price: 707.50, change: '+3.1%', amount: 1.2, icon: 'B' },
     { symbol: 'USDC', name: 'USD Coin', price: 1.00, change: '0.0%', amount: 1000448.60, icon: '$' }
   ]);
 
@@ -33,17 +33,28 @@ export default function Home() {
       setIsLoggedIn(false);
     }
 
+    // Cập nhật giá nhẹ nhàng cho tất cả coin (USDC giữ $1.00)
     const interval = setInterval(() => {
-      setAssets(prev => prev.map(asset => {
-        if (asset.symbol !== 'USDC') {
-          const fluctuation = (Math.random() * 0.3 - 0.145) / 100;
-          return { ...asset, price: Number((asset.price * (1 + fluctuation)).toFixed(2)) };
-        }
-        return asset;
-      }));
+      setAssets(prev =>
+        prev.map(asset => {
+          if (asset.symbol === 'USDC') {
+            return { ...asset, price: 1.00 };
+          }
+          const deltaPercent = (Math.random() * 0.1 - 0.05) / 100; // ±0.05%
+          const nextPrice = Number((asset.price * (1 + deltaPercent)).toFixed(2));
+          return {
+            ...asset,
+            price: nextPrice > 0 ? nextPrice : asset.price
+          };
+        })
+      );
     }, 3000);
+
     return () => clearInterval(interval);
   }, []);
+
+  const formatMoney = (value: number) =>
+    value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const handleAuth = () => {
     if (password.length < 6) {
@@ -73,31 +84,49 @@ export default function Home() {
     alert("Wallet address copied to clipboard: " + text);
   };
 
-  // Tính toán số lượng quy đổi khi Mua hoặc Bán
   const getEstimatedOutput = () => {
     const coinObj = assets.find(a => a.symbol === selectedCoin);
     if (!coinObj || coinObj.price === 0) return '0.00';
-    const inputVal = parseFloat(tradeAmount) || 0;
-    
+    const inputVal = parseFloat(tradeAmount);
+    if (isNaN(inputVal) || inputVal <= 0) return '0.00';
+
     if (tradeMode === 'buy') {
-      // Mua: Nhập USD -> Ra số lượng Coin
       return (inputVal / coinObj.price).toFixed(5) + ` ${selectedCoin}`;
     } else {
-      // Bán: Nhập số lượng Coin -> Ra số USD nhận được
-      return '$' + (inputVal * coinObj.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return '$' + formatMoney(inputVal * coinObj.price);
     }
   };
 
   const handleConfirmTrade = () => {
     const coinObj = assets.find(a => a.symbol === selectedCoin);
+    const inputVal = parseFloat(tradeAmount);
+    if (!coinObj || isNaN(inputVal) || inputVal <= 0) {
+      alert("Please enter a valid amount.");
+      return;
+    }
+
     if (tradeMode === 'buy') {
-      alert(`Successfully swapped $${tradeAmount} USD to purchase ${getEstimatedOutput()}!`);
+      const boughtCoinAmount = inputVal / coinObj.price;
+      setAssets(prev => prev.map(item => {
+        if (item.symbol === selectedCoin) {
+          return { ...item, amount: item.amount + boughtCoinAmount };
+        }
+        return item;
+      }));
+      alert(`Successfully bought ${boughtCoinAmount.toFixed(5)} ${selectedCoin} for $${inputVal.toLocaleString()} USD!`);
     } else {
-      if (coinObj && parseFloat(tradeAmount) > coinObj.amount) {
-        alert(`Insufficient ${selectedCoin} balance to sell! You have ${coinObj.amount} ${selectedCoin}.`);
+      if (inputVal > coinObj.amount) {
+        alert(`Insufficient ${selectedCoin} balance! Available: ${coinObj.amount} ${selectedCoin}.`);
         return;
       }
-      alert(`Successfully sold ${tradeAmount} ${selectedCoin} for ${getEstimatedOutput()}!`);
+      const receivedUsd = inputVal * coinObj.price;
+      setAssets(prev => prev.map(item => {
+        if (item.symbol === selectedCoin) {
+          return { ...item, amount: item.amount - inputVal };
+        }
+        return item;
+      }));
+      alert(`Successfully sold ${inputVal} ${selectedCoin} for $${formatMoney(receivedUsd)}!`);
     }
   };
 
@@ -126,23 +155,23 @@ export default function Home() {
 
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">Username / Email</label>
-                <input 
-                  type="text" 
-                  value={inputUser} 
-                  onChange={(e) => setInputUser(e.target.value)} 
-                  placeholder="harrybui" 
-                  className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500" 
+                <input
+                  type="text"
+                  value={inputUser}
+                  onChange={(e) => setInputUser(e.target.value)}
+                  placeholder="harrybui"
+                  className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">Password (min 6 chars)</label>
-                <input 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="••••••••" 
-                  className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500" 
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -158,7 +187,7 @@ export default function Home() {
         ) : (
           /* ================= GIAO DIỆN CHÍNH (DASHBOARD) ================= */
           <div className="flex-1 flex flex-col overflow-hidden relative bg-[#0c0d10]">
-            
+
             {/* Top Header */}
             <div className="px-6 pt-10 pb-4 flex items-center justify-between bg-[#0c0d10] shrink-0 z-10">
               <div className="flex items-center space-x-3">
@@ -180,14 +209,14 @@ export default function Home() {
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto pb-28 px-6 space-y-6">
-              
+
               {activeTab === 'home' && (
                 <div className="space-y-6">
-                  
+
                   {/* Total Balance */}
                   <div className="text-center py-2">
                     <h2 className="text-4xl font-extrabold tracking-tight text-white">
-                      ${calculateTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ${formatMoney(calculateTotal())}
                     </h2>
                     <p className="text-xs text-emerald-400 font-medium mt-1">Wallet 1 (Live Feed Active)</p>
                   </div>
@@ -206,12 +235,12 @@ export default function Home() {
 
                   {/* Search */}
                   <div className="relative">
-                    <input 
-                      type="text" 
-                      placeholder="Search Assets or URL" 
-                      value={searchQuery} 
-                      onChange={(e) => setSearchQuery(e.target.value)} 
-                      className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3 text-xs text-slate-300 focus:outline-none focus:border-emerald-500" 
+                    <input
+                      type="text"
+                      placeholder="Search Assets or URL"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-[#161821] border border-slate-800 rounded-2xl px-4 py-3 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
@@ -275,11 +304,11 @@ export default function Home() {
                             <div className="w-10 h-10 rounded-xl bg-[#0c0d10] flex items-center justify-center font-bold text-emerald-400 border border-slate-800">{asset.icon}</div>
                             <div>
                               <h4 className="text-sm font-semibold text-white">{asset.name}</h4>
-                              <p className="text-xs text-slate-400">{asset.amount} {asset.symbol} • <span className="text-slate-300">${asset.price.toLocaleString()}</span></p>
+                              <p className="text-xs text-slate-400">{asset.amount} {asset.symbol} • <span className="text-slate-300">${formatMoney(asset.price)}</span></p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-semibold text-white">${(asset.amount * asset.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <p className="text-sm font-semibold text-white">${formatMoney(asset.amount * asset.price)}</p>
                             <p className={`text-xs font-medium ${asset.change.startsWith('+') ? 'text-emerald-400' : 'text-rose-400'}`}>{asset.change}</p>
                           </div>
                         </div>
@@ -293,37 +322,34 @@ export default function Home() {
               {activeTab === 'trade' && (
                 <div className="space-y-6 pt-2">
                   <h3 className="text-lg font-bold text-white mb-2">Trade & Swap</h3>
-                  
-                  {/* Khung Trade & Swap hỗ trợ cả Mua (Buy) và Bán (Sell) Coin */}
+
                   <div className="bg-[#161821] p-5 rounded-3xl border border-slate-800 space-y-4 relative shadow-xl">
-                    
-                    {/* Nút chọn chế độ Mua (Buy) hoặc Bán (Sell) */}
+
                     <div className="flex bg-[#0c0d10] p-1 rounded-2xl border border-slate-800">
-                      <button 
-                        onClick={() => setTradeMode('buy')} 
+                      <button
+                        onClick={() => setTradeMode('buy')}
                         className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${tradeMode === 'buy' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400'}`}
                       >
                         Buy Coin
                       </button>
-                      <button 
-                        onClick={() => setTradeMode('sell')} 
+                      <button
+                        onClick={() => setTradeMode('sell')}
                         className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${tradeMode === 'sell' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400'}`}
                       >
                         Sell Coin
                       </button>
                     </div>
 
-                    {/* Ô nhập số lượng */}
                     <div className="space-y-1.5">
                       <label className="block text-xs font-medium text-slate-400">
                         {tradeMode === 'buy' ? 'You Pay (USD)' : `You Sell (${selectedCoin})`}
                       </label>
                       <div className="relative flex items-center bg-[#0c0d10] border border-slate-800 rounded-2xl px-4 py-3.5 focus-within:border-emerald-500">
-                        <input 
-                          type="number" 
-                          value={tradeAmount} 
-                          onChange={(e) => setTradeAmount(e.target.value)} 
-                          className="w-full bg-transparent text-xl font-bold text-white focus:outline-none" 
+                        <input
+                          type="number"
+                          value={tradeAmount}
+                          onChange={(e) => setTradeAmount(e.target.value)}
+                          className="w-full bg-transparent text-xl font-bold text-white focus:outline-none"
                         />
                         <span className="text-sm font-semibold text-slate-400 ml-2">
                           {tradeMode === 'buy' ? 'USD' : selectedCoin}
@@ -331,14 +357,12 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Icon mũi tên hướng xuống */}
                     <div className="flex justify-center -my-2 relative z-10">
                       <div className="w-8 h-8 rounded-full bg-[#161821] border border-slate-800 flex items-center justify-center text-emerald-400 font-bold shadow-md">
                         ↓
                       </div>
                     </div>
 
-                    {/* Ô nhận quy đổi và danh sách chọn Coin */}
                     <div className="space-y-1.5">
                       <label className="block text-xs font-medium text-slate-400">
                         {tradeMode === 'buy' ? 'You Receive (Estimated)' : 'You Receive (USD Est.)'}
@@ -347,9 +371,9 @@ export default function Home() {
                         <span className="text-xl font-bold text-emerald-400">
                           {getEstimatedOutput()}
                         </span>
-                        <select 
-                          value={selectedCoin} 
-                          onChange={(e) => setSelectedCoin(e.target.value)} 
+                        <select
+                          value={selectedCoin}
+                          onChange={(e) => setSelectedCoin(e.target.value)}
                           className="bg-[#161821] text-xs font-semibold px-3 py-2 rounded-xl border border-slate-800 text-white focus:outline-none cursor-pointer"
                         >
                           {assets.map(a => (
@@ -359,10 +383,9 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Nút Xác nhận giao dịch */}
-                    <button 
-                      onClick={handleConfirmTrade} 
-                      className={`w-full font-bold py-4 rounded-2xl shadow-lg transition-all cursor-pointer mt-2 text-slate-950 ${tradeMode === 'buy' ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20' : 'bg-rose-500 hover:bg-rose-400 text-white shadow-rose-500/20'}`}
+                    <button
+                      onClick={handleConfirmTrade}
+                      className={`w-full font-bold py-4 rounded-2xl shadow-lg transition-all cursor-pointer mt-2 ${tradeMode === 'buy' ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20' : 'bg-rose-500 hover:bg-rose-400 text-white shadow-rose-500/20'}`}
                     >
                       {tradeMode === 'buy' ? 'Confirm Buy' : 'Confirm Sell'}
                     </button>
@@ -378,7 +401,7 @@ export default function Home() {
                     {assets.map(a => (
                       <div key={a.symbol} className="flex justify-between items-center py-2 border-b border-slate-800/60">
                         <span className="text-xs font-semibold text-white">{a.name} ({a.symbol})</span>
-                        <span className="text-xs text-emerald-400">${a.price.toLocaleString()}</span>
+                        <span className="text-xs text-emerald-400">${formatMoney(a.price)}</span>
                       </div>
                     ))}
                   </div>
