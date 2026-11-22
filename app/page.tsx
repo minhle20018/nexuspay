@@ -22,13 +22,15 @@ interface ActivityItem {
   timestamp: string;
 }
 
+const LIVE_SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
+
 const INITIAL_ASSETS: Asset[] = [
   {
     symbol: 'BTC',
     name: 'Bitcoin',
-    basePrice: 60865.64,
-    price: 60865.64,
-    change: '+2.4%',
+    basePrice: 0,
+    price: 0,
+    change: '+0.0%',
     amount: 87.00205338809035,
     icon: '₿',
     address: 'bc1q098234hjt994k',
@@ -36,9 +38,9 @@ const INITIAL_ASSETS: Asset[] = [
   {
     symbol: 'ETH',
     name: 'Ethereum',
-    basePrice: 1713.88,
-    price: 1713.88,
-    change: '+1.8%',
+    basePrice: 0,
+    price: 0,
+    change: '+0.0%',
     amount: 1748.1748908296943,
     icon: 'Ξ',
     address: '0x71C84922b9183Ea482b',
@@ -46,9 +48,9 @@ const INITIAL_ASSETS: Asset[] = [
   {
     symbol: 'SOL',
     name: 'Solana',
-    basePrice: 70.39,
-    price: 70.39,
-    change: '-0.5%',
+    basePrice: 0,
+    price: 0,
+    change: '+0.0%',
     amount: 12.5,
     icon: '◎',
     address: '8SExE819vJxK994nx',
@@ -56,9 +58,9 @@ const INITIAL_ASSETS: Asset[] = [
   {
     symbol: 'BNB',
     name: 'BNB',
-    basePrice: 554.28,
-    price: 554.28,
-    change: '+3.1%',
+    basePrice: 0,
+    price: 0,
+    change: '+0.0%',
     amount: 1.2,
     icon: 'B',
   },
@@ -74,56 +76,47 @@ const INITIAL_ASSETS: Asset[] = [
   {
     symbol: 'XRP',
     name: 'Ripple',
-    basePrice: 1.45,
-    price: 1.45,
-    change: '+4.2%',
+    basePrice: 0,
+    price: 0,
+    change: '+0.0%',
     amount: 0,
     icon: '✕',
   },
   {
     symbol: 'DOGE',
     name: 'Dogecoin',
-    basePrice: 0.24,
-    price: 0.24,
-    change: '+6.1%',
+    basePrice: 0,
+    price: 0,
+    change: '+0.0%',
     amount: 0,
     icon: 'Ð',
   },
   {
     symbol: 'ADA',
     name: 'Cardano',
-    basePrice: 0.78,
-    price: 0.78,
-    change: '-1.2%',
+    basePrice: 0,
+    price: 0,
+    change: '+0.0%',
     amount: 0,
     icon: '₳',
   },
   {
     symbol: 'AVAX',
     name: 'Avalanche',
-    basePrice: 38.5,
-    price: 38.5,
-    change: '+2.9%',
+    basePrice: 0,
+    price: 0,
+    change: '+0.0%',
     amount: 0,
     icon: 'A',
   },
   {
     symbol: 'LINK',
     name: 'Chainlink',
-    basePrice: 18.2,
-    price: 18.2,
-    change: '+1.5%',
+    basePrice: 0,
+    price: 0,
+    change: '+0.0%',
     amount: 0,
     icon: '⬡',
-  },
-  {
-    symbol: 'NVDA',
-    name: 'NVIDIA Corp',
-    basePrice: 125.53,
-    price: 125.53,
-    change: '-14.0%',
-    amount: 0,
-    icon: '🟢',
   },
 ];
 
@@ -133,7 +126,7 @@ const INITIAL_ACTIVITIES: ActivityItem[] = [
     type: 'Receive',
     symbol: 'BTC',
     amount: 87.00205339,
-    usdValue: 87.00205338809035 * 60865.64,
+    usdValue: 0,
     timestamp: 'Today, 08:15 AM',
   },
   {
@@ -141,7 +134,7 @@ const INITIAL_ACTIVITIES: ActivityItem[] = [
     type: 'Receive',
     symbol: 'ETH',
     amount: 1748.17489083,
-    usdValue: 1748.1748908296943 * 1713.88,
+    usdValue: 0,
     timestamp: 'Yesterday, 04:40 PM',
   },
   {
@@ -154,6 +147,20 @@ const INITIAL_ACTIVITIES: ActivityItem[] = [
   },
 ];
 
+function applyPricesToAssets(list: Asset[], priceMap: Record<string, number>): Asset[] {
+  return list.map((item) => {
+    const nextPrice = item.symbol === 'USDC' ? 1.0 : priceMap[item.symbol];
+    if (typeof nextPrice === 'number' && Number.isFinite(nextPrice) && nextPrice > 0) {
+      return {
+        ...item,
+        price: nextPrice,
+        basePrice: item.basePrice > 0 ? item.basePrice : nextPrice,
+      };
+    }
+    return item;
+  });
+}
+
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'home' | 'trade' | 'explore' | 'activity'>('home');
@@ -162,6 +169,7 @@ export default function Home() {
   const [activities, setActivities] = useState<ActivityItem[]>(INITIAL_ACTIVITIES);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'offline'>('syncing');
+  const [priceUpdatedAt, setPriceUpdatedAt] = useState<string>('Updating...');
 
   // Trade state
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -173,6 +181,59 @@ export default function Home() {
 
   const lastUpdatedAtRef = useRef<number>(0);
   const isSavingRef = useRef<boolean>(false);
+  const latestPricesRef = useRef<Record<string, number>>({ USDC: 1.0 });
+
+  const pullLivePrices = useCallback(async () => {
+    const collected: Record<string, number> = { ...latestPricesRef.current, USDC: 1.0 };
+    let gotAnyPrice = false;
+
+    try {
+      const res = await fetch('/api/prices', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const rawPrices = data?.prices && typeof data.prices === 'object' ? data.prices : data;
+        if (rawPrices && typeof rawPrices === 'object') {
+          for (const [sym, val] of Object.entries(rawPrices as Record<string, unknown>)) {
+            const num = typeof val === 'number' ? val : Number(val);
+            if (Number.isFinite(num) && num > 0) {
+              collected[sym.toUpperCase()] = num;
+              gotAnyPrice = true;
+            }
+          }
+        }
+      }
+    } catch {
+      // Dự phòng gọi trực tiếp Coinbase bên dưới
+    }
+
+    const missingSymbols = LIVE_SYMBOLS.filter((sym) => !(collected[sym] > 0));
+    if (missingSymbols.length > 0) {
+      await Promise.all(
+        missingSymbols.map(async (sym) => {
+          try {
+            const r = await fetch(`https://api.coinbase.com/v2/prices/${sym}-USD/spot`, {
+              cache: 'no-store',
+            });
+            if (!r.ok) return;
+            const j = await r.json();
+            const n = Number(j?.data?.amount);
+            if (Number.isFinite(n) && n > 0) {
+              collected[sym] = n;
+              gotAnyPrice = true;
+            }
+          } catch {
+            // Bỏ qua symbol lỗi
+          }
+        })
+      );
+    }
+
+    if (gotAnyPrice) {
+      latestPricesRef.current = collected;
+      setAssets((prev) => applyPricesToAssets(prev, collected));
+      setPriceUpdatedAt(new Date().toLocaleTimeString());
+    }
+  }, []);
 
   const pullWalletFromServer = useCallback(async (force = false) => {
     if (isSavingRef.current && !force) return;
@@ -189,7 +250,7 @@ export default function Home() {
         const remoteTs = typeof data.updatedAt === 'number' ? data.updatedAt : 0;
         if (force || remoteTs !== lastUpdatedAtRef.current) {
           lastUpdatedAtRef.current = remoteTs;
-          setAssets(data.assets);
+          setAssets(applyPricesToAssets(data.assets, latestPricesRef.current));
           setActivities(data.activities);
         }
         setSyncStatus('synced');
@@ -221,7 +282,7 @@ export default function Home() {
           lastUpdatedAtRef.current = saved.updatedAt;
         }
         if (Array.isArray(saved?.assets) && Array.isArray(saved?.activities)) {
-          setAssets(saved.assets);
+          setAssets(applyPricesToAssets(saved.assets, latestPricesRef.current));
           setActivities(saved.activities);
         }
         setSyncStatus('synced');
@@ -234,14 +295,15 @@ export default function Home() {
     []
   );
 
-  // Đồng bộ ví giữa laptop và điện thoại khi đang đăng nhập
   useEffect(() => {
     if (!isLoggedIn) return;
 
+    pullLivePrices();
     pullWalletFromServer(true);
 
     const handleSyncOnReturn = () => {
       if (document.visibilityState === 'visible') {
+        pullLivePrices();
         pullWalletFromServer(true);
       }
     };
@@ -249,18 +311,25 @@ export default function Home() {
     window.addEventListener('focus', handleSyncOnReturn);
     document.addEventListener('visibilitychange', handleSyncOnReturn);
 
-    const pollInterval = setInterval(() => {
+    const walletInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         pullWalletFromServer(false);
       }
     }, 3000);
 
+    const priceInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        pullLivePrices();
+      }
+    }, 10000);
+
     return () => {
       window.removeEventListener('focus', handleSyncOnReturn);
       document.removeEventListener('visibilitychange', handleSyncOnReturn);
-      clearInterval(pollInterval);
+      clearInterval(walletInterval);
+      clearInterval(priceInterval);
     };
-  }, [isLoggedIn, pullWalletFromServer]);
+  }, [isLoggedIn, pullLivePrices, pullWalletFromServer]);
 
   const selectedAsset = useMemo(
     () => assets.find((a) => a.symbol === selectedSymbol) || assets[0],
@@ -268,7 +337,9 @@ export default function Home() {
   );
 
   useEffect(() => {
-    const currentPrice = selectedAsset?.price || 1;
+    const currentPrice = selectedAsset?.price || 0;
+    if (currentPrice <= 0) return;
+
     if (lastEdited === 'usd') {
       const usdVal = parseFloat(usdInput);
       if (!isNaN(usdVal) && usdVal >= 0) {
@@ -317,8 +388,8 @@ export default function Home() {
       {
         symbol: upper,
         name: `${upper} Asset`,
-        basePrice: 100.0,
-        price: 100.0,
+        basePrice: 0,
+        price: latestPricesRef.current[upper] || 0,
         change: '+0.0%',
         amount: 0,
         icon: '✨',
@@ -348,8 +419,8 @@ export default function Home() {
       return;
     }
 
-    if (!selectedAsset) {
-      setTradeMessage('Không tìm thấy tài sản để giao dịch.');
+    if (!selectedAsset || selectedAsset.price <= 0) {
+      setTradeMessage('Đang chờ giá thị trường thực tế, vui lòng thử lại sau vài giây.');
       return;
     }
 
@@ -408,14 +479,16 @@ export default function Home() {
   const formatUsd = (val: number) =>
     val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const formatCoinPrice = (val: number) =>
-    val < 2
-      ? val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
-      : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatCoinPrice = (val: number) => {
+    if (!Number.isFinite(val) || val <= 0) return 'Loading...';
+    return val < 2
+      ? `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
+      : `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   const syncLabel =
     syncStatus === 'synced'
-      ? 'Wallet 1 • Synced (Laptop & Phone)'
+      ? `Wallet 1 • Live (${priceUpdatedAt})`
       : syncStatus === 'syncing'
       ? 'Wallet 1 • Syncing...'
       : 'Wallet 1 • Offline / Retrying';
@@ -525,7 +598,7 @@ export default function Home() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search any symbol to buy (e.g. BTC, DOGE, NVDA...)"
+                    placeholder="Search any symbol to buy (e.g. BTC, DOGE, SOL...)"
                     className="w-full bg-[#14161c] border border-white/10 rounded-2xl px-4 py-3 pr-10 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/60"
                   />
                   {searchQuery && (
@@ -566,7 +639,7 @@ export default function Home() {
                                 </span>
                               </div>
                               <div className="text-xs text-zinc-400">
-                                ${formatCoinPrice(coin.price)} • Bal: {coin.amount}
+                                {formatCoinPrice(coin.price)} • Bal: {coin.amount}
                               </div>
                             </div>
                           </div>
@@ -650,7 +723,7 @@ export default function Home() {
               <section className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-bold text-zinc-200">Your Assets (Harry Bui)</h2>
-                  <span className="text-xs font-medium text-emerald-400">• Synced Wallet</span>
+                  <span className="text-xs font-medium text-emerald-400">• Live Prices</span>
                 </div>
 
                 <div className="space-y-2.5">
@@ -676,7 +749,7 @@ export default function Home() {
                           <div className="truncate">
                             <div className="text-sm font-bold truncate">{asset.name}</div>
                             <div className="text-xs text-zinc-400 truncate">
-                              {asset.amount} {asset.symbol} • ${formatCoinPrice(asset.price)}
+                              {asset.amount} {asset.symbol} • {formatCoinPrice(asset.price)}
                             </div>
                           </div>
                         </div>
@@ -708,7 +781,7 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <h1 className="text-xl font-bold">Trade & Swap</h1>
                 <span className="text-xs text-emerald-400">
-                  1 {selectedAsset.symbol} = ${formatCoinPrice(selectedAsset.price)}
+                  1 {selectedAsset.symbol} = {formatCoinPrice(selectedAsset.price)}
                 </span>
               </div>
 
@@ -817,7 +890,7 @@ export default function Home() {
 
           {activeTab === 'explore' && (
             <section className="space-y-3">
-              <h1 className="text-xl font-bold">Market Watch (Synced)</h1>
+              <h1 className="text-xl font-bold">Market Watch (Live)</h1>
               {assets.map((a) => (
                 <div
                   key={`exp-${a.symbol}`}
@@ -840,7 +913,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold">${formatCoinPrice(a.price)}</div>
+                    <div className="text-sm font-bold">{formatCoinPrice(a.price)}</div>
                     <div className="text-xs text-emerald-400">Trade →</div>
                   </div>
                 </div>
