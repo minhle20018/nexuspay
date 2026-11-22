@@ -22,6 +22,11 @@ interface ActivityItem {
   timestamp: string;
 }
 
+interface MarketPayload {
+  prices: Record<string, number>;
+  changes: Record<string, string>;
+}
+
 const LIVE_SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
 
 const INITIAL_ASSETS: Asset[] = [
@@ -43,17 +48,40 @@ const INITIAL_ACTIVITIES: ActivityItem[] = [
   { id: 'act-3', type: 'Receive', symbol: 'USDC', amount: 1000448.6, usdValue: 1000448.6, timestamp: '2 days ago' },
 ];
 
-function applyPricesToAssets(list: Asset[], priceMap: Record<string, number>): Asset[] {
+function formatChangeFromStats(openVal: number, lastVal: number): string | null {
+  if (!Number.isFinite(openVal) || openVal <= 0 || !Number.isFinite(lastVal) || lastVal <= 0) {
+    return null;
+  }
+  const pct = ((lastVal - openVal) / openVal) * 100;
+  if (!Number.isFinite(pct) || Math.abs(pct) < 0.005) return '0.0%';
+  const sign = pct > 0 ? '+' : '';
+  return `${sign}${pct.toFixed(2)}%`;
+}
+
+function applyMarketToAssets(
+  list: Asset[],
+  priceMap: Record<string, number>,
+  changeMap: Record<string, string>
+): Asset[] {
   return list.map((item) => {
-    const nextPrice = item.symbol === 'USDC' ? 1.0 : priceMap[item.symbol];
-    if (typeof nextPrice === 'number' && Number.isFinite(nextPrice) && nextPrice > 0) {
-      return {
-        ...item,
-        price: nextPrice,
-        basePrice: item.basePrice > 0 ? item.basePrice : nextPrice,
-      };
+    if (item.symbol === 'USDC') {
+      return { ...item, price: 1.0, basePrice: 1.0, change: '0.0%' };
     }
-    return item;
+    const nextPrice = priceMap[item.symbol];
+    const nextChange = changeMap[item.symbol];
+    const hasValidPrice = typeof nextPrice === 'number' && Number.isFinite(nextPrice) && nextPrice > 0;
+    const hasValidChange = typeof nextChange === 'string' && nextChange.length > 0;
+
+    if (!hasValidPrice && !hasValidChange) {
+      return item;
+    }
+
+    return {
+      ...item,
+      price: hasValidPrice ? nextPrice : item.price,
+      basePrice: hasValidPrice ? (item.basePrice > 0 ? item.basePrice : nextPrice) : item.basePrice,
+      change: hasValidChange ? nextChange : item.change,
+    };
   });
 }
 
@@ -76,43 +104,58 @@ export default function Home() {
 
   const lastUpdatedAtRef = useRef<number>(0);
   const isSavingRef = useRef<boolean>(false);
-  const latestPricesRef = useRef<Record<string, number>>({ USDC: 1.0 });
+  const latestMarketRef = useRef<MarketPayload>({
+    prices: { USDC: 1.0 },
+    changes: { USDC: '0.0%' },
+  });
 
   const pullLivePrices = useCallback(async () => {
-    const collected: Record<string, number> = { ...latestPricesRef.current, USDC: 1.0 };
-    let gotAnyPrice = false;
+    const collectedPrices: Record<string, number> = { ...latestMarketRef.current.prices, USDC: 1.0 };
+    const collectedChanges: Record<string, string> = { ...latestMarketRef.current.changes, USDC: '0.0%' };
+    let gotAnyMarketData = false;
 
     try {
       const res = await fetch(`/api/prices?symbols=${LIVE_SYMBOLS.join(',')}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const rawPrices = data?.prices && typeof data.prices === 'object' ? data.prices : data;
+        const rawChanges = data?.changes && typeof data.changes === 'object' ? data.changes : {};
+
         if (rawPrices && typeof rawPrices === 'object') {
           for (const [sym, val] of Object.entries(rawPrices as Record<string, unknown>)) {
             const num = typeof val === 'number' ? val : Number(val);
             if (Number.isFinite(num) && num > 0) {
-              collected[sym.toUpperCase()] = num;
-              gotAnyPrice = true;
+              collectedPrices[sym.toUpperCase()] = num;
+              gotAnyMarketData = true;
+            }
+          }
+        }
+
+        if (rawChanges && typeof rawChanges === 'object') {
+          for (const [sym, val] of Object.entries(rawChanges as Record<string, unknown>)) {
+            if (typeof val === 'string' && val.trim().length > 0) {
+              collectedChanges[sym.toUpperCase()] = val.trim();
+              gotAnyMarketData = true;
             }
           }
         }
       }
     } catch {
-      // Fallback to direct Coinbase spot endpoint
+      // Fallback to direct Coinbase endpoints
     }
 
-    const missing = LIVE_SYMBOLS.filter((sym) => !(collected[sym] > 0));
-    if (missing.length > 0) {
+    const missingPrice = LIVE_SYMBOLS.filter((sym) => !(collectedPrices[sym] > 0));
+    if (missingPrice.length > 0) {
       await Promise.all(
-        missing.map(async (sym) => {
+        missingPrice.map(async (sym) => {
           try {
             const r = await fetch(`https://api.coinbase.com/v2/prices/${sym}-USD/spot`, { cache: 'no-store' });
             if (!r.ok) return;
             const j = await r.json();
             const n = Number(j?.data?.amount);
             if (Number.isFinite(n) && n > 0) {
-              collected[sym] = n;
-              gotAnyPrice = true;
+              collectedPrices[sym] = n;
+              gotAnyMarketData = true;
             }
           } catch {
             // Ignore failed symbol
@@ -121,9 +164,33 @@ export default function Home() {
       );
     }
 
-    if (gotAnyPrice) {
-      latestPricesRef.current = collected;
-      setAssets((prev) => applyPricesToAssets(prev, collected));
+    const missingChange = LIVE_SYMBOLS.filter((sym) => !collectedChanges[sym]);
+    if (missingChange.length > 0) {
+      await Promise.all(
+        missingChange.map(async (sym) => {
+          try {
+            const r = await fetch(`https://api.exchange.coinbase.com/products/${sym}-USD/stats`, {
+              cache: 'no-store',
+            });
+            if (!r.ok) return;
+            const st = await r.json();
+            const openVal = Number(st?.open);
+            const lastVal = collectedPrices[sym] || Number(st?.last);
+            const pctStr = formatChangeFromStats(openVal, lastVal);
+            if (pctStr) {
+              collectedChanges[sym] = pctStr;
+              gotAnyMarketData = true;
+            }
+          } catch {
+            // Ignore failed stats symbol
+          }
+        })
+      );
+    }
+
+    if (gotAnyMarketData) {
+      latestMarketRef.current = { prices: collectedPrices, changes: collectedChanges };
+      setAssets((prev) => applyMarketToAssets(prev, collectedPrices, collectedChanges));
       setPriceUpdatedAt(new Date().toLocaleTimeString());
     }
   }, []);
@@ -141,7 +208,13 @@ export default function Home() {
         const remoteTs = typeof data.updatedAt === 'number' ? data.updatedAt : 0;
         if (force || remoteTs !== lastUpdatedAtRef.current) {
           lastUpdatedAtRef.current = remoteTs;
-          setAssets(applyPricesToAssets(data.assets, latestPricesRef.current));
+          setAssets(
+            applyMarketToAssets(
+              data.assets,
+              latestMarketRef.current.prices,
+              latestMarketRef.current.changes
+            )
+          );
           setActivities(data.activities);
         }
         setSyncStatus('synced');
@@ -170,7 +243,13 @@ export default function Home() {
         lastUpdatedAtRef.current = saved.updatedAt;
       }
       if (Array.isArray(saved?.assets) && Array.isArray(saved?.activities)) {
-        setAssets(applyPricesToAssets(saved.assets, latestPricesRef.current));
+        setAssets(
+          applyMarketToAssets(
+            saved.assets,
+            latestMarketRef.current.prices,
+            latestMarketRef.current.changes
+          )
+        );
         setActivities(saved.activities);
       }
       setSyncStatus('synced');
@@ -249,7 +328,17 @@ export default function Home() {
     );
     return matched.length > 0
       ? matched
-      : [{ symbol: upper, name: `${upper} Asset`, basePrice: 0, price: latestPricesRef.current[upper] || 0, change: '+0.0%', amount: 0, icon: '✨' }];
+      : [
+          {
+            symbol: upper,
+            name: `${upper} Asset`,
+            basePrice: 0,
+            price: latestMarketRef.current.prices[upper] || 0,
+            change: latestMarketRef.current.changes[upper] || '+0.0%',
+            amount: 0,
+            icon: '✨',
+          },
+        ];
   }, [assets, searchQuery]);
 
   const handleCopyAddress = (addr: string) => {

@@ -2,26 +2,73 @@
 
 const DEFAULT_SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'USDC', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
 
-async function fetchSpotPrice(symbol: string): Promise<number | null> {
+interface MarketSnapshot {
+  price: number | null;
+  change: string | null;
+}
+
+function formatChangePercent(pct: number): string {
+  if (!Number.isFinite(pct) || Math.abs(pct) < 0.005) return '0.0%';
+  const sign = pct > 0 ? '+' : '';
+  return `${sign}${pct.toFixed(2)}%`;
+}
+
+async function fetchCoinbaseMarket(symbol: string): Promise<MarketSnapshot> {
   const upper = symbol.trim().toUpperCase();
-  if (!upper) return null;
-  if (upper === 'USDC') return 1.0;
+  if (!upper) return { price: null, change: null };
+  if (upper === 'USDC') return { price: 1.0, change: '0.0%' };
+
+  let price: number | null = null;
+  let change: string | null = null;
 
   try {
-    const res = await fetch(
+    const spotRes = await fetch(
       `https://api.coinbase.com/v2/prices/${encodeURIComponent(upper)}-USD/spot`,
       {
         cache: 'no-store',
         signal: AbortSignal.timeout(5000),
       }
     );
-    if (!res.ok) return null;
-    const json: { data?: { amount?: string | number } } = await res.json();
-    const val = Number(json?.data?.amount);
-    return Number.isFinite(val) && val > 0 ? val : null;
+    if (spotRes.ok) {
+      const json: { data?: { amount?: string | number } } = await spotRes.json();
+      const val = Number(json?.data?.amount);
+      if (Number.isFinite(val) && val > 0) {
+        price = val;
+      }
+    }
   } catch {
-    return null;
+    // Ignore spot error
   }
+
+  try {
+    const statsRes = await fetch(
+      `https://api.exchange.coinbase.com/products/${encodeURIComponent(upper)}-USD/stats`,
+      {
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'NexusPay/1.0',
+        },
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+    if (statsRes.ok) {
+      const stats: { open?: string | number; last?: string | number } = await statsRes.json();
+      const openVal = Number(stats?.open);
+      const lastVal = price ?? Number(stats?.last);
+      if (Number.isFinite(openVal) && openVal > 0 && Number.isFinite(lastVal) && lastVal > 0) {
+        const pct = ((lastVal - openVal) / openVal) * 100;
+        change = formatChangePercent(pct);
+        if (price === null) {
+          price = lastVal;
+        }
+      }
+    }
+  } catch {
+    // Ignore stats error
+  }
+
+  return { price, change };
 }
 
 export async function GET(req: NextRequest) {
@@ -36,12 +83,16 @@ export async function GET(req: NextRequest) {
 
   const symbols = Array.from(new Set(requested));
   const prices: Record<string, number> = {};
+  const changes: Record<string, string> = {};
 
   await Promise.all(
     symbols.map(async (sym) => {
-      const price = await fetchSpotPrice(sym);
-      if (price !== null) {
-        prices[sym] = price;
+      const snap = await fetchCoinbaseMarket(sym);
+      if (snap.price !== null) {
+        prices[sym] = snap.price;
+      }
+      if (snap.change !== null) {
+        changes[sym] = snap.change;
       }
     })
   );
@@ -49,8 +100,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     {
       prices,
+      changes,
       updatedAt: Date.now(),
-      source: 'coinbase-spot',
+      source: 'coinbase-spot-stats',
     },
     { status: 200 }
   );
