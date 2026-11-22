@@ -16,7 +16,6 @@ function formatChangePercent(pct: number): string {
 async function fetchCoinbaseMarket(symbol: string): Promise<MarketSnapshot> {
   const upper = symbol.trim().toUpperCase();
   if (!upper) return { price: null, change: null };
-  if (upper === 'USDC') return { price: 1.0, change: '0.0%' };
 
   let price: number | null = null;
   let change: string | null = null;

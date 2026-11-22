@@ -27,14 +27,14 @@ interface MarketPayload {
   changes: Record<string, string>;
 }
 
-const LIVE_SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
+const LIVE_SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'USDC', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
 
 const EMPTY_ASSETS: Asset[] = [
   { symbol: 'BTC', name: 'Bitcoin', basePrice: 0, price: 0, change: '—', amount: 0, icon: '₿', address: 'bc1q098234hjt994k' },
   { symbol: 'ETH', name: 'Ethereum', basePrice: 0, price: 0, change: '—', amount: 0, icon: 'Ξ', address: '0x71C84922b9183Ea482b' },
   { symbol: 'SOL', name: 'Solana', basePrice: 0, price: 0, change: '—', amount: 0, icon: '◎', address: '8SExE819vJxK994nx' },
   { symbol: 'BNB', name: 'BNB', basePrice: 0, price: 0, change: '—', amount: 0, icon: 'B' },
-  { symbol: 'USDC', name: 'USD Coin', basePrice: 1.0, price: 1.0, change: '0.0%', amount: 0, icon: '$' },
+  { symbol: 'USDC', name: 'USD Coin', basePrice: 0, price: 0, change: '—', amount: 0, icon: '$' },
   { symbol: 'XRP', name: 'Ripple', basePrice: 0, price: 0, change: '—', amount: 0, icon: '✕' },
   { symbol: 'DOGE', name: 'Dogecoin', basePrice: 0, price: 0, change: '—', amount: 0, icon: 'Ð' },
   { symbol: 'ADA', name: 'Cardano', basePrice: 0, price: 0, change: '—', amount: 0, icon: '₳' },
@@ -58,9 +58,6 @@ function applyMarketToAssets(
   changeMap: Record<string, string>
 ): Asset[] {
   return list.map((item) => {
-    if (item.symbol === 'USDC') {
-      return { ...item, price: 1.0, basePrice: 1.0, change: '0.0%' };
-    }
     const nextPrice = priceMap[item.symbol];
     const nextChange = changeMap[item.symbol];
     const hasValidPrice = typeof nextPrice === 'number' && Number.isFinite(nextPrice) && nextPrice > 0;
@@ -99,13 +96,13 @@ export default function Home() {
   const lastUpdatedAtRef = useRef<number>(0);
   const isSavingRef = useRef<boolean>(false);
   const latestMarketRef = useRef<MarketPayload>({
-    prices: { USDC: 1.0 },
-    changes: { USDC: '0.0%' },
+    prices: {},
+    changes: {},
   });
 
   const pullLivePrices = useCallback(async () => {
-    const collectedPrices: Record<string, number> = { ...latestMarketRef.current.prices, USDC: 1.0 };
-    const collectedChanges: Record<string, string> = { ...latestMarketRef.current.changes, USDC: '0.0%' };
+    const collectedPrices: Record<string, number> = { ...latestMarketRef.current.prices };
+    const collectedChanges: Record<string, string> = { ...latestMarketRef.current.changes };
     let gotAnyMarketData = false;
 
     try {
@@ -275,7 +272,7 @@ export default function Home() {
 
     const priceTimer = setInterval(() => {
       if (document.visibilityState === 'visible') pullLivePrices();
-    }, 10000);
+    }, 4000);
 
     return () => {
       window.removeEventListener('focus', onReturn);
