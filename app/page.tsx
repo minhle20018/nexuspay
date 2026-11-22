@@ -132,6 +132,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'home' | 'trade' | 'explore' | 'activity'>('home');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
   // Trade state
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
@@ -265,6 +266,16 @@ export default function Home() {
     setIsLoggedIn(true);
   };
 
+  const handleCopyAddress = (addr: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(addr);
+    }
+    setCopiedAddress(addr);
+    setTimeout(() => {
+      setCopiedAddress((prev) => (prev === addr ? null : prev));
+    }, 1500);
+  };
+
   const handleExecuteTrade = (e: React.FormEvent) => {
     e.preventDefault();
     setTradeMessage(null);
@@ -277,22 +288,44 @@ export default function Home() {
       return;
     }
 
+    if (!selectedAsset) {
+      setTradeMessage('Không tìm thấy tài sản để giao dịch.');
+      return;
+    }
+
     if (tradeMode === 'sell' && coinAmount > selectedAsset.amount) {
       setTradeMessage(`Không đủ số dư ${selectedAsset.symbol} để bán.`);
       return;
     }
 
-    setAssets((prev) =>
-      prev.map((item) => {
-        if (item.symbol === selectedAsset.symbol) {
-          const updatedAmount =
-            tradeMode === 'buy' ? item.amount + coinAmount : item.amount - coinAmount;
-          return { ...item, amount: Number(Math.max(0, updatedAmount).toFixed(8)) };
-        }
-        // Giữ nguyên số dư các tài sản khác (kể cả USDC)
-        return item;
-      })
-    );
+    const soldCompletely =
+      tradeMode === 'sell' && Number(Math.max(0, selectedAsset.amount - coinAmount).toFixed(8)) <= 0;
+
+    setAssets((prev) => {
+      const updated = prev
+        .map((item) => {
+          if (item.symbol === selectedAsset.symbol) {
+            const updatedAmount =
+              tradeMode === 'buy' ? item.amount + coinAmount : item.amount - coinAmount;
+            return { ...item, amount: Number(Math.max(0, updatedAmount).toFixed(8)) };
+          }
+          // Giữ nguyên số dư các tài sản khác (kể cả USDC)
+          return item;
+        })
+        .filter((item) => {
+          // Nếu bán hết (số dư về 0) thì gỡ tài sản khỏi ví
+          if (tradeMode === 'sell' && item.symbol === selectedAsset.symbol && item.amount <= 0) {
+            return false;
+          }
+          return true;
+        });
+
+      if (soldCompletely && updated.length > 0) {
+        setSelectedSymbol(updated[0].symbol);
+      }
+
+      return updated;
+    });
 
     const newActivity: ActivityItem = {
       id: `act-${Date.now()}`,
@@ -305,7 +338,9 @@ export default function Home() {
 
     setActivities((prev) => [newActivity, ...prev]);
     setTradeMessage(
-      `${tradeMode === 'buy' ? 'Đã mua thêm' : 'Đã bán'} ${coinAmount.toFixed(6)} ${selectedAsset.symbol} ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
+      soldCompletely
+        ? `Đã bán hết ${selectedAsset.symbol} và gỡ khỏi ví ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
+        : `${tradeMode === 'buy' ? 'Đã mua thêm' : 'Đã bán'} ${coinAmount.toFixed(6)} ${selectedAsset.symbol} ($${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`
     );
   };
 
@@ -511,25 +546,39 @@ export default function Home() {
 
               {/* Fund your wallet addresses */}
               <section className="space-y-2.5">
-                <h2 className="text-sm font-bold text-zinc-200">Fund your wallet</h2>
-                <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-zinc-200">Fund your wallet</h2>
+                  <span className="text-[11px] text-zinc-400">Wallet Addresses</span>
+                </div>
+
+                <div className="bg-[#14161c] border border-white/10 rounded-2xl divide-y divide-white/5 overflow-hidden">
                   {assets
-                    .filter((a) => a.address)
+                    .filter((a) => Boolean(a.address))
                     .map((a) => (
                       <div
                         key={`addr-${a.symbol}`}
-                        className="bg-[#14161c] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between"
+                        onClick={() => a.address && handleCopyAddress(a.address)}
+                        className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#191c24] transition cursor-pointer"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-sm">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0">
                             {a.icon}
                           </div>
-                          <div>
-                            <div className="text-sm font-semibold">{a.name}</div>
-                            <div className="text-xs text-zinc-500 font-mono">{a.address}</div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold truncate">
+                              {a.name}{' '}
+                              <span className="text-xs font-normal text-zinc-400">
+                                ({a.symbol})
+                              </span>
+                            </div>
+                            <div className="text-xs text-zinc-500 font-mono truncate">
+                              {a.address}
+                            </div>
                           </div>
                         </div>
-                        <span className="text-xs text-zinc-400">📄</span>
+                        <span className="text-xs text-emerald-400 shrink-0 font-medium">
+                          {copiedAddress === a.address ? 'Copied' : '📄'}
+                        </span>
                       </div>
                     ))}
                 </div>
