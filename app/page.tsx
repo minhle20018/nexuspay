@@ -25,126 +25,22 @@ interface ActivityItem {
 const LIVE_SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
 
 const INITIAL_ASSETS: Asset[] = [
-  {
-    symbol: 'BTC',
-    name: 'Bitcoin',
-    basePrice: 0,
-    price: 0,
-    change: '+0.0%',
-    amount: 87.00205338809035,
-    icon: '₿',
-    address: 'bc1q098234hjt994k',
-  },
-  {
-    symbol: 'ETH',
-    name: 'Ethereum',
-    basePrice: 0,
-    price: 0,
-    change: '+0.0%',
-    amount: 1748.1748908296943,
-    icon: 'Ξ',
-    address: '0x71C84922b9183Ea482b',
-  },
-  {
-    symbol: 'SOL',
-    name: 'Solana',
-    basePrice: 0,
-    price: 0,
-    change: '+0.0%',
-    amount: 12.5,
-    icon: '◎',
-    address: '8SExE819vJxK994nx',
-  },
-  {
-    symbol: 'BNB',
-    name: 'BNB',
-    basePrice: 0,
-    price: 0,
-    change: '+0.0%',
-    amount: 1.2,
-    icon: 'B',
-  },
-  {
-    symbol: 'USDC',
-    name: 'USD Coin',
-    basePrice: 1.0,
-    price: 1.0,
-    change: '0.0%',
-    amount: 1000448.6,
-    icon: '$',
-  },
-  {
-    symbol: 'XRP',
-    name: 'Ripple',
-    basePrice: 0,
-    price: 0,
-    change: '+0.0%',
-    amount: 0,
-    icon: '✕',
-  },
-  {
-    symbol: 'DOGE',
-    name: 'Dogecoin',
-    basePrice: 0,
-    price: 0,
-    change: '+0.0%',
-    amount: 0,
-    icon: 'Ð',
-  },
-  {
-    symbol: 'ADA',
-    name: 'Cardano',
-    basePrice: 0,
-    price: 0,
-    change: '+0.0%',
-    amount: 0,
-    icon: '₳',
-  },
-  {
-    symbol: 'AVAX',
-    name: 'Avalanche',
-    basePrice: 0,
-    price: 0,
-    change: '+0.0%',
-    amount: 0,
-    icon: 'A',
-  },
-  {
-    symbol: 'LINK',
-    name: 'Chainlink',
-    basePrice: 0,
-    price: 0,
-    change: '+0.0%',
-    amount: 0,
-    icon: '⬡',
-  },
+  { symbol: 'BTC', name: 'Bitcoin', basePrice: 0, price: 0, change: '+0.0%', amount: 87.00205338809035, icon: '₿', address: 'bc1q098234hjt994k' },
+  { symbol: 'ETH', name: 'Ethereum', basePrice: 0, price: 0, change: '+0.0%', amount: 1748.1748908296943, icon: 'Ξ', address: '0x71C84922b9183Ea482b' },
+  { symbol: 'SOL', name: 'Solana', basePrice: 0, price: 0, change: '+0.0%', amount: 12.5, icon: '◎', address: '8SExE819vJxK994nx' },
+  { symbol: 'BNB', name: 'BNB', basePrice: 0, price: 0, change: '+0.0%', amount: 1.2, icon: 'B' },
+  { symbol: 'USDC', name: 'USD Coin', basePrice: 1.0, price: 1.0, change: '0.0%', amount: 1000448.6, icon: '$' },
+  { symbol: 'XRP', name: 'Ripple', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: '✕' },
+  { symbol: 'DOGE', name: 'Dogecoin', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: 'Ð' },
+  { symbol: 'ADA', name: 'Cardano', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: '₳' },
+  { symbol: 'AVAX', name: 'Avalanche', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: 'A' },
+  { symbol: 'LINK', name: 'Chainlink', basePrice: 0, price: 0, change: '+0.0%', amount: 0, icon: '⬡' },
 ];
 
 const INITIAL_ACTIVITIES: ActivityItem[] = [
-  {
-    id: 'act-1',
-    type: 'Receive',
-    symbol: 'BTC',
-    amount: 87.00205339,
-    usdValue: 0,
-    timestamp: 'Today, 08:15 AM',
-  },
-  {
-    id: 'act-2',
-    type: 'Receive',
-    symbol: 'ETH',
-    amount: 1748.17489083,
-    usdValue: 0,
-    timestamp: 'Yesterday, 04:40 PM',
-  },
-  {
-    id: 'act-3',
-    type: 'Receive',
-    symbol: 'USDC',
-    amount: 1000448.6,
-    usdValue: 1000448.6,
-    timestamp: '2 days ago',
-  },
+  { id: 'act-1', type: 'Receive', symbol: 'BTC', amount: 87.00205339, usdValue: 0, timestamp: 'Today, 08:15 AM' },
+  { id: 'act-2', type: 'Receive', symbol: 'ETH', amount: 1748.17489083, usdValue: 0, timestamp: 'Yesterday, 04:40 PM' },
+  { id: 'act-3', type: 'Receive', symbol: 'USDC', amount: 1000448.6, usdValue: 1000448.6, timestamp: '2 days ago' },
 ];
 
 function applyPricesToAssets(list: Asset[], priceMap: Record<string, number>): Asset[] {
@@ -171,7 +67,6 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'offline'>('syncing');
   const [priceUpdatedAt, setPriceUpdatedAt] = useState<string>('Updating...');
 
-  // Trade state
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
   const [selectedSymbol, setSelectedSymbol] = useState<string>('BTC');
   const [usdInput, setUsdInput] = useState<string>('1000');
@@ -188,9 +83,7 @@ export default function Home() {
     let gotAnyPrice = false;
 
     try {
-      const res = await fetch(`/api/prices?symbols=${LIVE_SYMBOLS.join(',')}`, {
-        cache: 'no-store',
-      });
+      const res = await fetch(`/api/prices?symbols=${LIVE_SYMBOLS.join(',')}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const rawPrices = data?.prices && typeof data.prices === 'object' ? data.prices : data;
@@ -205,17 +98,15 @@ export default function Home() {
         }
       }
     } catch {
-      // Dự phòng gọi trực tiếp Coinbase bên dưới
+      // Dự phòng Coinbase trực tiếp
     }
 
-    const missingSymbols = LIVE_SYMBOLS.filter((sym) => !(collected[sym] > 0));
-    if (missingSymbols.length > 0) {
+    const missing = LIVE_SYMBOLS.filter((sym) => !(collected[sym] > 0));
+    if (missing.length > 0) {
       await Promise.all(
-        missingSymbols.map(async (sym) => {
+        missing.map(async (sym) => {
           try {
-            const r = await fetch(`https://api.coinbase.com/v2/prices/${sym}-USD/spot`, {
-              cache: 'no-store',
-            });
+            const r = await fetch(`https://api.coinbase.com/v2/prices/${sym}-USD/spot`, { cache: 'no-store' });
             if (!r.ok) return;
             const j = await r.json();
             const n = Number(j?.data?.amount);
@@ -239,14 +130,12 @@ export default function Home() {
 
   const pullWalletFromServer = useCallback(async (force = false) => {
     if (isSavingRef.current && !force) return;
-
     try {
       const res = await fetch('/api/wallet', { cache: 'no-store' });
       if (!res.ok) {
         setSyncStatus('offline');
         return;
       }
-
       const data = await res.json();
       if (Array.isArray(data?.assets) && Array.isArray(data?.activities)) {
         const remoteTs = typeof data.updatedAt === 'number' ? data.updatedAt : 0;
@@ -262,74 +151,64 @@ export default function Home() {
     }
   }, []);
 
-  const pushWalletToServer = useCallback(
-    async (nextAssets: Asset[], nextActivities: ActivityItem[]) => {
-      isSavingRef.current = true;
-      try {
-        setSyncStatus('syncing');
-        const res = await fetch('/api/wallet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          cache: 'no-store',
-          body: JSON.stringify({ assets: nextAssets, activities: nextActivities }),
-        });
-
-        if (!res.ok) {
-          setSyncStatus('offline');
-          return;
-        }
-
-        const saved = await res.json();
-        if (typeof saved?.updatedAt === 'number') {
-          lastUpdatedAtRef.current = saved.updatedAt;
-        }
-        if (Array.isArray(saved?.assets) && Array.isArray(saved?.activities)) {
-          setAssets(applyPricesToAssets(saved.assets, latestPricesRef.current));
-          setActivities(saved.activities);
-        }
-        setSyncStatus('synced');
-      } catch {
+  const pushWalletToServer = useCallback(async (nextAssets: Asset[], nextActivities: ActivityItem[]) => {
+    isSavingRef.current = true;
+    try {
+      setSyncStatus('syncing');
+      const res = await fetch('/api/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ assets: nextAssets, activities: nextActivities }),
+      });
+      if (!res.ok) {
         setSyncStatus('offline');
-      } finally {
-        isSavingRef.current = false;
+        return;
       }
-    },
-    []
-  );
+      const saved = await res.json();
+      if (typeof saved?.updatedAt === 'number') {
+        lastUpdatedAtRef.current = saved.updatedAt;
+      }
+      if (Array.isArray(saved?.assets) && Array.isArray(saved?.activities)) {
+        setAssets(applyPricesToAssets(saved.assets, latestPricesRef.current));
+        setActivities(saved.activities);
+      }
+      setSyncStatus('synced');
+    } catch {
+      setSyncStatus('offline');
+    } finally {
+      isSavingRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) return;
-
     pullLivePrices();
     pullWalletFromServer(true);
 
-    const handleSyncOnReturn = () => {
+    const onReturn = () => {
       if (document.visibilityState === 'visible') {
         pullLivePrices();
         pullWalletFromServer(true);
       }
     };
 
-    window.addEventListener('focus', handleSyncOnReturn);
-    document.addEventListener('visibilitychange', handleSyncOnReturn);
+    window.addEventListener('focus', onReturn);
+    document.addEventListener('visibilitychange', onReturn);
 
-    const walletInterval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        pullWalletFromServer(false);
-      }
+    const walletTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') pullWalletFromServer(false);
     }, 3000);
 
-    const priceInterval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        pullLivePrices();
-      }
+    const priceTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') pullLivePrices();
     }, 10000);
 
     return () => {
-      window.removeEventListener('focus', handleSyncOnReturn);
-      document.removeEventListener('visibilitychange', handleSyncOnReturn);
-      clearInterval(walletInterval);
-      clearInterval(priceInterval);
+      window.removeEventListener('focus', onReturn);
+      document.removeEventListener('visibilitychange', onReturn);
+      clearInterval(walletTimer);
+      clearInterval(priceTimer);
     };
   }, [isLoggedIn, pullLivePrices, pullWalletFromServer]);
 
@@ -341,21 +220,12 @@ export default function Home() {
   useEffect(() => {
     const currentPrice = selectedAsset?.price || 0;
     if (currentPrice <= 0) return;
-
     if (lastEdited === 'usd') {
       const usdVal = parseFloat(usdInput);
-      if (!isNaN(usdVal) && usdVal >= 0) {
-        setCoinInput((usdVal / currentPrice).toFixed(6));
-      } else {
-        setCoinInput('');
-      }
+      setCoinInput(!isNaN(usdVal) && usdVal >= 0 ? (usdVal / currentPrice).toFixed(6) : '');
     } else {
       const coinVal = parseFloat(coinInput);
-      if (!isNaN(coinVal) && coinVal >= 0) {
-        setUsdInput((coinVal * currentPrice).toFixed(2));
-      } else {
-        setUsdInput('');
-      }
+      setUsdInput(!isNaN(coinVal) && coinVal >= 0 ? (coinVal * currentPrice).toFixed(2) : '');
     }
   }, [usdInput, coinInput, lastEdited, selectedAsset?.price]);
 
@@ -364,92 +234,60 @@ export default function Home() {
     [assets]
   );
 
-  const walletAssets = useMemo(
-    () => assets.filter((asset) => asset.amount > 0),
-    [assets]
-  );
+  const walletAssets = useMemo(() => assets.filter((a) => a.amount > 0), [assets]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return [];
     const lower = q.toLowerCase();
     const upper = q.toUpperCase();
-
     const matched = assets.filter(
       (a) =>
         a.name.toLowerCase().includes(lower) ||
         a.symbol.toLowerCase().includes(lower) ||
         (a.address && a.address.toLowerCase().includes(lower))
     );
-
-    if (matched.length > 0) {
-      return matched;
-    }
-
-    return [
-      {
-        symbol: upper,
-        name: `${upper} Asset`,
-        basePrice: 0,
-        price: latestPricesRef.current[upper] || 0,
-        change: '+0.0%',
-        amount: 0,
-        icon: '✨',
-      },
-    ];
+    return matched.length > 0
+      ? matched
+      : [{ symbol: upper, name: `${upper} Asset`, basePrice: 0, price: latestPricesRef.current[upper] || 0, change: '+0.0%', amount: 0, icon: '✨' }];
   }, [assets, searchQuery]);
 
   const handleCopyAddress = (addr: string) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(addr);
-    }
+    if (navigator.clipboard) navigator.clipboard.writeText(addr);
     setCopiedAddress(addr);
-    setTimeout(() => {
-      setCopiedAddress((prev) => (prev === addr ? null : prev));
-    }, 1500);
+    setTimeout(() => setCopiedAddress((prev) => (prev === addr ? null : prev)), 1500);
   };
 
   const handleExecuteTrade = async (e: React.FormEvent) => {
     e.preventDefault();
     setTradeMessage(null);
-
     const usdAmount = parseFloat(usdInput);
     const coinAmount = parseFloat(coinInput);
-
     if (isNaN(usdAmount) || isNaN(coinAmount) || usdAmount <= 0 || coinAmount <= 0) {
       setTradeMessage('Vui lòng nhập số tiền hợp lệ lớn hơn 0.');
       return;
     }
-
     if (!selectedAsset || selectedAsset.price <= 0) {
       setTradeMessage('Đang chờ giá thị trường thực tế, vui lòng thử lại sau vài giây.');
       return;
     }
-
     if (tradeMode === 'sell' && coinAmount > selectedAsset.amount) {
       setTradeMessage(`Không đủ số dư ${selectedAsset.symbol} để bán.`);
       return;
     }
 
     const soldCompletely =
-      tradeMode === 'sell' &&
-      Number(Math.max(0, selectedAsset.amount - coinAmount).toFixed(8)) <= 0;
+      tradeMode === 'sell' && Number(Math.max(0, selectedAsset.amount - coinAmount).toFixed(8)) <= 0;
 
     const updatedAssets = assets
       .map((item) => {
         if (item.symbol === selectedAsset.symbol) {
-          const updatedAmount =
-            tradeMode === 'buy' ? item.amount + coinAmount : item.amount - coinAmount;
+          const updatedAmount = tradeMode === 'buy' ? item.amount + coinAmount : item.amount - coinAmount;
           return { ...item, amount: Number(Math.max(0, updatedAmount).toFixed(8)) };
         }
         return item;
       })
-      .filter((item) => {
-        if (tradeMode === 'sell' && item.symbol === selectedAsset.symbol && item.amount <= 0) {
-          return false;
-        }
-        return true;
-      });
+      .filter((item) => !(tradeMode === 'sell' && item.symbol === selectedAsset.symbol && item.amount <= 0));
 
     const remainingWithBalance = updatedAssets.filter((item) => item.amount > 0);
     if (soldCompletely && remainingWithBalance.length > 0) {
@@ -466,7 +304,6 @@ export default function Home() {
     };
 
     const nextActivities = [newActivity, ...activities];
-
     setAssets(updatedAssets);
     setActivities(nextActivities);
     await pushWalletToServer(updatedAssets, nextActivities);
@@ -501,30 +338,19 @@ export default function Home() {
         <div className="w-full max-w-[420px] bg-[#121216] border border-white/10 rounded-3xl p-7 shadow-2xl space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-sm font-bold text-emerald-400">
-                N
-              </div>
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-sm font-bold text-emerald-400">N</div>
               <span className="text-base font-bold">NexusPay</span>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-300">
-              Web3 Wallet
-            </span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-zinc-300">Web3 Wallet</span>
           </div>
-
           <div className="space-y-1.5">
             <h1 className="text-2xl font-extrabold">Signed Out</h1>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Your session is locked. Sign back in to access Wallet 1 across your devices.
-            </p>
+            <p className="text-xs text-zinc-400 leading-relaxed">Your session is locked. Sign back in to access Wallet 1 across your devices.</p>
           </div>
-
           <div className="bg-[#0c0d10] border border-white/10 rounded-2xl p-4 space-y-1">
             <div className="text-xs text-zinc-400">Estimated Portfolio</div>
-            <div className="text-2xl font-extrabold text-emerald-400">
-              ${formatUsd(totalPortfolioUsd)}
-            </div>
+            <div className="text-2xl font-extrabold text-emerald-400">${formatUsd(totalPortfolioUsd)}</div>
           </div>
-
           <button
             type="button"
             onClick={() => setIsLoggedIn(true)}
@@ -542,15 +368,12 @@ export default function Home() {
       <div className="relative w-full max-w-[460px] min-h-screen bg-[#0c0d10] border-x border-white/10 flex flex-col pb-24">
         <header className="sticky top-0 z-20 bg-[#0c0d10]/90 backdrop-blur-md px-5 pt-4 pb-3 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-sm font-bold text-emerald-400">
-              N
-            </div>
+            <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-sm font-bold text-emerald-400">N</div>
             <div>
               <div className="text-sm font-bold leading-tight">NexusPay</div>
               <div className="text-[11px] text-emerald-400 leading-tight">{syncLabel}</div>
             </div>
           </div>
-
           <button
             type="button"
             onClick={() => setIsLoggedIn(false)}
@@ -564,9 +387,7 @@ export default function Home() {
           {activeTab === 'home' && (
             <>
               <section className="text-center space-y-1.5 pt-1">
-                <div className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                  ${formatUsd(totalPortfolioUsd)}
-                </div>
+                <div className="text-3xl sm:text-4xl font-extrabold tracking-tight">${formatUsd(totalPortfolioUsd)}</div>
                 <div className="text-xs font-medium text-emerald-400">{syncLabel}</div>
               </section>
 
@@ -576,20 +397,15 @@ export default function Home() {
                   onClick={() => setActiveTab('trade')}
                   className="bg-[#16181e] hover:bg-[#1e2129] border border-white/10 rounded-2xl py-4 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
                 >
-                  <span className="w-7 h-7 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-base font-bold">
-                    +
-                  </span>
+                  <span className="w-7 h-7 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-base font-bold">+</span>
                   <span className="text-sm font-semibold">Deposit</span>
                 </button>
-
                 <button
                   type="button"
                   onClick={() => setActiveTab('activity')}
                   className="bg-[#16181e] hover:bg-[#1e2129] border border-white/10 rounded-2xl py-4 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer"
                 >
-                  <span className="w-7 h-7 rounded-full bg-blue-500/15 text-blue-400 flex items-center justify-center text-base font-bold">
-                    ↓
-                  </span>
+                  <span className="w-7 h-7 rounded-full bg-blue-500/15 text-blue-400 flex items-center justify-center text-base font-bold">↓</span>
                   <span className="text-sm font-semibold">Receive</span>
                 </button>
               </section>
@@ -622,7 +438,6 @@ export default function Home() {
                       </span>
                       <span className="text-[11px] text-emerald-400">Tap Buy to trade</span>
                     </div>
-
                     <div className="space-y-2">
                       {searchResults.map((coin) => (
                         <div
@@ -630,28 +445,18 @@ export default function Home() {
                           className="bg-[#181b23] border border-white/5 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-sm shrink-0">
-                              {coin.icon}
-                            </div>
+                            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-bold text-sm shrink-0">{coin.icon}</div>
                             <div className="truncate">
                               <div className="text-sm font-bold truncate">
-                                {coin.name}{' '}
-                                <span className="text-xs font-normal text-zinc-400">
-                                  ({coin.symbol})
-                                </span>
+                                {coin.name} <span className="text-xs font-normal text-zinc-400">({coin.symbol})</span>
                               </div>
-                              <div className="text-xs text-zinc-400">
-                                {formatCoinPrice(coin.price)} • Bal: {coin.amount}
-                              </div>
+                              <div className="text-xs text-zinc-400">{formatCoinPrice(coin.price)} • Bal: {coin.amount}</div>
                             </div>
                           </div>
-
                           <button
                             type="button"
                             onClick={() => {
-                              const nextAssets = assets.some((item) => item.symbol === coin.symbol)
-                                ? assets
-                                : [...assets, coin];
+                              const nextAssets = assets.some((item) => item.symbol === coin.symbol) ? assets : [...assets, coin];
                               setAssets(nextAssets);
                               setSelectedSymbol(coin.symbol);
                               setTradeMode('buy');
@@ -678,9 +483,7 @@ export default function Home() {
                   <div className="text-xs text-zinc-400">Buy & Sell all supported assets anytime.</div>
                   <div className="text-xs font-semibold text-emerald-400 pt-0.5">Start Trading →</div>
                 </div>
-                <div className="w-11 h-11 rounded-2xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 font-bold text-lg">
-                  📈
-                </div>
+                <div className="w-11 h-11 rounded-2xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 font-bold text-lg">📈</div>
               </section>
 
               <section className="space-y-2.5">
@@ -688,7 +491,6 @@ export default function Home() {
                   <h2 className="text-sm font-bold text-zinc-200">Fund your wallet</h2>
                   <span className="text-[11px] text-zinc-400">Wallet Addresses</span>
                 </div>
-
                 <div className="bg-[#14161c] border border-white/10 rounded-2xl divide-y divide-white/5 overflow-hidden">
                   {assets
                     .filter((a) => Boolean(a.address))
@@ -699,19 +501,12 @@ export default function Home() {
                         className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#191c24] transition cursor-pointer"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0">
-                            {a.icon}
-                          </div>
+                          <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0">{a.icon}</div>
                           <div className="min-w-0">
                             <div className="text-sm font-semibold truncate">
-                              {a.name}{' '}
-                              <span className="text-xs font-normal text-zinc-400">
-                                ({a.symbol})
-                              </span>
+                              {a.name} <span className="text-xs font-normal text-zinc-400">({a.symbol})</span>
                             </div>
-                            <div className="text-xs text-zinc-500 font-mono truncate">
-                              {a.address}
-                            </div>
+                            <div className="text-xs text-zinc-500 font-mono truncate">{a.address}</div>
                           </div>
                         </div>
                         <span className="text-xs text-emerald-400 shrink-0 font-medium">
@@ -727,7 +522,6 @@ export default function Home() {
                   <h2 className="text-sm font-bold text-zinc-200">Your Assets (Harry Bui)</h2>
                   <span className="text-xs font-medium text-emerald-400">• Live Prices</span>
                 </div>
-
                 <div className="space-y-2.5">
                   {walletAssets.map((asset) => {
                     const usdTotal = asset.amount * asset.price;
@@ -745,9 +539,7 @@ export default function Home() {
                         className="bg-[#14161c] hover:bg-[#191c24] border border-white/5 rounded-2xl p-4 flex items-center justify-between transition cursor-pointer"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-base shrink-0">
-                            {asset.icon}
-                          </div>
+                          <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-base shrink-0">{asset.icon}</div>
                           <div className="truncate">
                             <div className="text-sm font-bold truncate">{asset.name}</div>
                             <div className="text-xs text-zinc-400 truncate">
@@ -755,16 +547,11 @@ export default function Home() {
                             </div>
                           </div>
                         </div>
-
                         <div className="text-right shrink-0 ml-3">
                           <div className="text-sm font-bold">${formatUsd(usdTotal)}</div>
                           <div
                             className={`text-xs font-semibold ${
-                              isNeutral
-                                ? 'text-zinc-400'
-                                : isNegative
-                                ? 'text-rose-400'
-                                : 'text-emerald-400'
+                              isNeutral ? 'text-zinc-400' : isNegative ? 'text-rose-400' : 'text-emerald-400'
                             }`}
                           >
                             {asset.change}
@@ -795,9 +582,7 @@ export default function Home() {
                     setTradeMessage(null);
                   }}
                   className={`py-2 rounded-xl text-sm font-bold transition cursor-pointer ${
-                    tradeMode === 'buy'
-                      ? 'bg-emerald-500 text-black'
-                      : 'text-zinc-400 hover:text-white'
+                    tradeMode === 'buy' ? 'bg-emerald-500 text-black' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   Buy
@@ -809,19 +594,14 @@ export default function Home() {
                     setTradeMessage(null);
                   }}
                   className={`py-2 rounded-xl text-sm font-bold transition cursor-pointer ${
-                    tradeMode === 'sell'
-                      ? 'bg-rose-500 text-white'
-                      : 'text-zinc-400 hover:text-white'
+                    tradeMode === 'sell' ? 'bg-rose-500 text-white' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   Sell
                 </button>
               </div>
 
-              <form
-                onSubmit={handleExecuteTrade}
-                className="bg-[#14161c] border border-white/10 rounded-2xl p-4 space-y-4"
-              >
+              <form onSubmit={handleExecuteTrade} className="bg-[#14161c] border border-white/10 rounded-2xl p-4 space-y-4">
                 <div>
                   <label className="block text-xs text-zinc-400 mb-1.5">Select Asset (All)</label>
                   <select
@@ -855,9 +635,7 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">
-                    Amount ({selectedAsset.symbol})
-                  </label>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Amount ({selectedAsset.symbol})</label>
                   <input
                     type="number"
                     step="any"
@@ -879,9 +657,7 @@ export default function Home() {
                 <button
                   type="submit"
                   className={`w-full py-3.5 rounded-2xl font-bold text-sm transition cursor-pointer ${
-                    tradeMode === 'buy'
-                      ? 'bg-emerald-500 hover:bg-emerald-400 text-black'
-                      : 'bg-rose-500 hover:bg-rose-400 text-white'
+                    tradeMode === 'buy' ? 'bg-emerald-500 hover:bg-emerald-400 text-black' : 'bg-rose-500 hover:bg-rose-400 text-white'
                   }`}
                 >
                   {tradeMode === 'buy' ? `Buy ${selectedAsset.symbol}` : `Sell ${selectedAsset.symbol}`}
@@ -904,14 +680,10 @@ export default function Home() {
                   className="bg-[#14161c] hover:bg-[#191c24] border border-white/5 rounded-2xl p-4 flex items-center justify-between transition cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center font-bold">
-                      {a.icon}
-                    </div>
+                    <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center font-bold">{a.icon}</div>
                     <div>
                       <div className="text-sm font-bold">{a.name}</div>
-                      <div className="text-xs text-zinc-400">
-                        {a.symbol} • Bal: {a.amount}
-                      </div>
+                      <div className="text-xs text-zinc-400">{a.symbol} • Bal: {a.amount}</div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -932,15 +704,11 @@ export default function Home() {
                   className="bg-[#14161c] border border-white/5 rounded-2xl p-4 flex items-center justify-between"
                 >
                   <div>
-                    <div className="text-sm font-bold">
-                      {item.type} {item.symbol}
-                    </div>
+                    <div className="text-sm font-bold">{item.type} {item.symbol}</div>
                     <div className="text-xs text-zinc-400">{item.timestamp}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold">
-                      {item.amount} {item.symbol}
-                    </div>
+                    <div className="text-sm font-bold">{item.amount} {item.symbol}</div>
                     <div className="text-xs text-emerald-400">${formatUsd(item.usdValue)}</div>
                   </div>
                 </div>
@@ -953,42 +721,31 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setActiveTab('home')}
-            className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${
-              activeTab === 'home' ? 'text-emerald-400' : 'text-zinc-400'
-            }`}
+            className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${activeTab === 'home' ? 'text-emerald-400' : 'text-zinc-400'}`}
           >
             <span>🏠</span>
             <span className="text-[10px] mt-0.5">Home</span>
           </button>
-
           <button
             type="button"
             onClick={() => setActiveTab('trade')}
-            className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${
-              activeTab === 'trade' ? 'text-emerald-400' : 'text-zinc-400'
-            }`}
+            className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${activeTab === 'trade' ? 'text-emerald-400' : 'text-zinc-400'}`}
           >
             <span>📊</span>
             <span className="text-[10px] mt-0.5">Trade</span>
           </button>
-
           <button
             type="button"
             onClick={() => setActiveTab('explore')}
-            className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${
-              activeTab === 'explore' ? 'text-emerald-400' : 'text-zinc-400'
-            }`}
+            className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${activeTab === 'explore' ? 'text-emerald-400' : 'text-zinc-400'}`}
           >
             <span>🔍</span>
             <span className="text-[10px] mt-0.5">Explore</span>
           </button>
-
           <button
             type="button"
             onClick={() => setActiveTab('activity')}
-            className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${
-              activeTab === 'activity' ? 'text-emerald-400' : 'text-zinc-400'
-            }`}
+            className={`p-2 cursor-pointer font-bold text-xs flex flex-col items-center ${activeTab === 'activity' ? 'text-emerald-400' : 'text-zinc-400'}`}
           >
             <span>⏰</span>
             <span className="text-[10px] mt-0.5">Activity</span>
