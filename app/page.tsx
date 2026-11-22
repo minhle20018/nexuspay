@@ -188,7 +188,9 @@ export default function Home() {
     let gotAnyPrice = false;
 
     try {
-      const res = await fetch('/api/prices', { cache: 'no-store' });
+      const res = await fetch(`/api/prices?symbols=${LIVE_SYMBOLS.join(',')}`, {
+        cache: 'no-store',
+      });
       if (res.ok) {
         const data = await res.json();
         const rawPrices = data?.prices && typeof data.prices === 'object' ? data.prices : data;

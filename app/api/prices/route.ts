@@ -1,29 +1,49 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
+const DEFAULT_SYMBOLS = ['BTC', 'ETH', 'SOL', 'BNB', 'USDC', 'XRP', 'DOGE', 'ADA', 'AVAX', 'LINK'];
 
-export async function GET() {
-  const prices: Record<string, number> = {
-    USDC: 1.0,
-  };
+async function fetchSpotPrice(symbol: string): Promise<number | null> {
+  const upper = symbol.trim().toUpperCase();
+  if (!upper) return null;
+  if (upper === 'USDC') return 1.0;
+
+  try {
+    const res = await fetch(
+      `https://api.coinbase.com/v2/prices/${encodeURIComponent(upper)}-USD/spot`,
+      {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+    if (!res.ok) return null;
+    const json: { data?: { amount?: string | number } } = await res.json();
+    const val = Number(json?.data?.amount);
+    return Number.isFinite(val) && val > 0 ? val : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const rawSymbols = searchParams.get('symbols');
+  const requested = rawSymbols
+    ? rawSymbols
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean)
+    : DEFAULT_SYMBOLS;
+
+  const symbols = Array.from(new Set(requested));
+  const prices: Record<string, number> = {};
 
   await Promise.all(
-    SYMBOLS.map(async (symbol) => {
-      try {
-        const res = await fetch(`https://api.coinbase.com/v2/prices/${symbol}-USD/spot`, {
-          cache: 'no-store',
-          signal: AbortSignal.timeout(5000),
-        });
-        if (!res.ok) return;
-        const json = await res.json();
-        const parsed = Number(json?.data?.amount);
-        if (Number.isFinite(parsed) && parsed > 0) {
-          prices[symbol] = parsed;
-        }
-      } catch {
-        // Bỏ qua symbol lỗi để không làm hỏng toàn bộ response
+    symbols.map(async (sym) => {
+      const price = await fetchSpotPrice(sym);
+      if (price !== null) {
+        prices[sym] = price;
       }
     })
   );
